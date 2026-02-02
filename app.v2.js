@@ -1321,6 +1321,8 @@ function updateSettlementButton() {
         footer.style.display = 'flex';
         btn.style.display = 'block';
         btn.textContent = `${count}건 정산 하기 (Settle)`;
+        // Ensure z-index or visibility if hidden by modal params
+        btn.style.visibility = 'visible';
     } else {
         footer.style.display = 'none';
         btn.style.display = 'none';
