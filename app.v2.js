@@ -292,6 +292,7 @@ const dom = {
     cbAllPurchase: document.getElementById('cb-all-purchase'),
     cbAllKorea: document.getElementById('cb-all-korea'),
     cbAllFinance: document.getElementById('cb-all-finance'),
+    btnSettleSelected: document.getElementById('btn-settle-selected'),
 
     // Order Form
     form: {
@@ -445,6 +446,14 @@ function setupEvents() {
                 dom.modals.list.classList.add('hidden');
                 dom.modals.list.style.display = 'none';
             }
+        };
+    }
+
+    if (dom.btnSettleSelected) {
+        dom.btnSettleSelected.onclick = () => {
+            // Close list modal? Or keep open? 
+            // Logic says: Open Settlement Modal.
+            openSettlementModal();
         };
     }
 }
@@ -1271,11 +1280,51 @@ function showStatDetails(type) {
                 </div>
                 <div style="font-weight:bold; color:${type === 'cost' ? '#ef4444' : (type === 'profit' ? '#10b981' : '#2563eb')}">${val}</div>
             `;
+
+            // Checkbox for Cost (Settlement)
+            if (type === 'cost') {
+                const chk = createCheckbox((checked) => {
+                    if (checked) STATE.selectedFinanceIds.add(o.order_id);
+                    else STATE.selectedFinanceIds.delete(o.order_id);
+                    updateSettlementButton(); // Helper to show/hide floating button
+                });
+                chk.querySelector('input').checked = STATE.selectedFinanceIds.has(o.order_id);
+
+                // Wrap content
+                const content = document.createElement('div');
+                content.style.flex = 1;
+                content.style.display = 'flex';
+                content.style.justifyContent = 'space-between';
+                content.style.alignItems = 'center'; // Aligns text and value
+                content.innerHTML = div.innerHTML;
+
+                div.innerHTML = ''; // Clear original
+                div.appendChild(chk);
+                div.appendChild(content);
+            }
+
             dom.listModalContent.appendChild(div);
         });
     }
 
     dom.modals.list.style.display = 'flex';
+    updateSettlementButton();
+}
+
+function updateSettlementButton() {
+    const btn = dom.btnSettleSelected;
+    const footer = document.getElementById('list-modal-footer');
+    if (!btn || !footer) return;
+
+    const count = STATE.selectedFinanceIds.size;
+    if (count > 0) {
+        footer.style.display = 'flex';
+        btn.style.display = 'block';
+        btn.textContent = `${count}건 정산 하기 (Settle)`;
+    } else {
+        footer.style.display = 'none';
+        btn.style.display = 'none';
+    }
 }
 
 
@@ -1702,7 +1751,7 @@ function addProductRow(data = null) {
 
 async function saveOrder() {
     console.log('Save Order Clicked');
-    const rows = dom.form.container.querySelectorAll('.card');
+    const rows = dom.form.container.querySelectorAll('.product-row-card');
     if (!rows.length) return alert('상품을 추가하세요');
 
     const common = {
