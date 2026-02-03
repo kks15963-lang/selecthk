@@ -71,21 +71,50 @@
             <div class="golden-spacer"></div>
 
             <!-- Key Metric Hero -->
-            <div class="hero-metric-card" id="card-profit">
-                <span class="hero-label" data-i18n="profit">예상 수익 (Profit)</span>
-                <span id="stat-profit" class="hero-value income">0</span>
-                <span class="hero-sub" data-i18n="click_details">터치하여 상세 보기</span>
-            </div>
+
 
             <!-- Dashboard Grid -->
-            <div class="dashboard-grid">
-                <div class="stat-card" id="card-revenue">
-                    <span class="stat-label" data-i18n="revenue">매출 (Revenue)</span>
-                    <span id="stat-revenue" class="stat-value">0</span>
+            <!-- Dashboard Date Filter -->
+            <div class="dashboard-filter"
+                style="background:#fff; padding:15px; border-radius:12px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="date" id="dash-date-start" class="form-input" style="flex:1;">
+                    <span style="align-self:center; color:#94a3b8;">~</span>
+                    <input type="date" id="dash-date-end" class="form-input" style="flex:1;">
                 </div>
-                <div class="stat-card" id="card-cost">
-                    <span class="stat-label" data-i18n="settlement_needed">지출 예상 (Cost)</span>
-                    <span id="stat-cost" class="stat-value expense">0</span>
+                <div style="display:flex; justify-content:space-between; gap:5px;">
+                    <div class="preset-group">
+                        <button id="btn-dash-today" class="btn-xs">오늘</button>
+                        <button id="btn-dash-week" class="btn-xs">이번주</button>
+                        <button id="btn-dash-month" class="btn-xs">이번달</button>
+                    </div>
+                    <button id="btn-dash-reset" class="btn-xs" style="color:var(--text-sub);">전체</button>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Profit (Toggleable) -->
+                <div class="stat-card hero-card" onclick="toggleCurrencyMode()">
+                    <div class="stat-label">
+                        <span data-i18n="stat_profit">예상 수익</span>
+                        <span id="label-curr-mode" class="badge"
+                            style="background:rgba(255,255,255,0.2); font-size:10px; margin-left:5px;">KRW</span>
+                    </div>
+                    <div class="stat-value" id="stat-profit">0</div>
+                </div>
+
+                <!-- Revenue (Fixed HKD) -->
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat_revenue">매출 (Sales)</div>
+                    <div class="stat-value" id="stat-revenue">0</div>
+                    <div class="stat-sub">HKD</div>
+                </div>
+
+                <!-- Cost (Fixed KRW) -->
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat_cost">매입 지출 (Cost)</div>
+                    <div class="stat-value" id="stat-cost">0</div>
+                    <div class="stat-sub">KRW</div>
                 </div>
             </div>
 
@@ -93,20 +122,23 @@
 
             <!-- Pipeline -->
             <div class="pipeline-container">
-                <div class="pipeline-step" data-target="view-purchase">
+                <div class="pipeline-step step-pending" onclick="navigate('view-purchase')">
                     <span id="badge-pending" class="step-count">0</span>
                     <span class="step-label" data-i18n="nav_purchase">매입필요</span>
                 </div>
-                <!-- Connector -->
-                <div class="pipeline-step" data-target="view-korea">
+                <!-- Arrow Icon -->
+                <div style="align-self:center; color:#cbd5e1;">&gt;</div>
+                <div class="pipeline-step step-ordered" onclick="navigate('view-korea')">
                     <span id="badge-ordered" class="step-count">0</span>
-                    <span class="step-label" data-i18n="nav_warehouse">발송대기</span>
+                    <span class="step-label" data-i18n="nav_korea">발송대기</span>
                 </div>
-                <div class="pipeline-step" data-target="view-hongkong">
+                <div style="align-self:center; color:#cbd5e1;">&gt;</div>
+                <div class="pipeline-step step-shipped" onclick="navigate('view-hongkong')">
                     <span id="badge-shipped-kr" class="step-count">0</span>
-                    <span class="step-label" data-i18n="nav_delivery">배송대기</span>
+                    <span class="step-label" data-i18n="nav_hk">배송대기</span>
                 </div>
-                <div class="pipeline-step" data-target="view-finance">
+                <div style="align-self:center; color:#cbd5e1;">&gt;</div>
+                <div class="pipeline-step step-completed" onclick="navigate('view-finance')">
                     <span id="badge-completed" class="step-count">0</span>
                     <span class="step-label" data-i18n="nav_finance">정산대기</span>
                 </div>
@@ -464,10 +496,12 @@
 
     <!-- Toast & Loading -->
     <div id="toast-container" class="toast-container"></div>
+    <!-- 15. LOADING OVERLAY -->
     <div id="loading-overlay" class="hidden">
-        <div class="spinner"></div>
+        <img src="loading.png" class="loading-spinner" alt="Loading..." style="width: 80px; height: 80px;">
     </div>
 
+    <!-- SCRIPTS -->
     <!-- Main Navigation -->
     <nav class="bottom-nav">
         <button class="nav-item active" data-target="view-dashboard">

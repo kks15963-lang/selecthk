@@ -50,11 +50,7 @@ let STATE = {
         startDate: '',
         endDate: ''
     },
-    auth: null,
-    filters: {
-        customer: '',
-        product: '',
-        status: 'All',
+    dashFilters: {
         startDate: '',
         endDate: ''
     },
@@ -79,6 +75,7 @@ const dom = {
     authCode: document.getElementById('auth-code'),
     btnAuthConfirm: document.getElementById('btn-auth-confirm'),
     loadingOverlay: document.getElementById('loading-overlay'),
+    toastContainer: document.getElementById('toast-container'),
 
     // Views
     sections: document.querySelectorAll('.section'),
@@ -247,7 +244,7 @@ function setupEvents() {
         dom.inpShipTotal.focus();
         // Update Title
         const title = dom.modals.korea.querySelector('h3');
-        if (title) title.innerText = `일괄 배송 처리 (${STATE.selectedKoreaIds.size}개)`;
+        if (title) title.innerText = `일괄 배송 처리 (${STATE.selectedKoreaIds.size}개) - 배송비(HKD) 입력`;
     };
 
     // Modals (HK)
@@ -262,7 +259,7 @@ function setupEvents() {
     // Close handled by global dismiss
     dom.bulkBtns.settle.onclick = openSettlementModal;
 
-    // Filter Bindings
+    // Filter Bindings (Order List)
     document.getElementById('filter-customer').oninput = (e) => { STATE.filters.customer = e.target.value; renderOrderList(); };
     document.getElementById('filter-product').oninput = (e) => { STATE.filters.product = e.target.value; renderOrderList(); };
     document.getElementById('filter-status').onchange = (e) => { STATE.filters.status = e.target.value; renderOrderList(); };
@@ -274,6 +271,19 @@ function setupEvents() {
     document.getElementById('btn-period-week').onclick = () => setDateFilter(7);
     document.getElementById('btn-period-month').onclick = () => setDateFilter(30);
     document.getElementById('btn-filter-reset').onclick = resetFilters;
+
+    // Dashboard Filter Bindings
+    document.getElementById('dash-date-start').onchange = (e) => { STATE.dashFilters.startDate = e.target.value; renderDashboard(); };
+    document.getElementById('dash-date-end').onchange = (e) => { STATE.dashFilters.endDate = e.target.value; renderDashboard(); };
+    document.getElementById('btn-dash-today').onclick = () => setDashDateFilter(0);
+    document.getElementById('btn-dash-week').onclick = () => setDashDateFilter(7);
+    document.getElementById('btn-dash-month').onclick = () => setDashDateFilter(30);
+    document.getElementById('btn-dash-reset').onclick = () => {
+        STATE.dashFilters.startDate = ''; STATE.dashFilters.endDate = '';
+        document.getElementById('dash-date-start').value = '';
+        document.getElementById('dash-date-end').value = '';
+        renderDashboard();
+    };
 
     // Settings
     dom.btnLangKo.onclick = () => setLang('ko');
@@ -305,6 +315,7 @@ function setupEvents() {
         };
         dom.receipt.paper.addEventListener('touchstart', startSave);
         dom.receipt.paper.addEventListener('touchend', endSave);
+        dom.receipt.paper.addEventListener('touchmove', endSave);
         dom.receipt.paper.addEventListener('mousedown', startSave);
         dom.receipt.paper.addEventListener('mouseup', endSave);
         dom.receipt.paper.addEventListener('mouseleave', endSave);
@@ -429,39 +440,70 @@ function navigate(targetId) {
 function renderDashboard() {
     // Calc Metrics
     let profit = 0, revenue = 0, cost = 0;
+
+    const f = STATE.dashFilters;
+    // Filter by Date for Metrics
+    const filteredOrders = STATE.orders.filter(o => {
+        if (o.status === 'Cancelled') return false;
+        if (f.startDate || f.endDate) {
+            const d = o.order_date;
+            if (f.startDate && d < f.startDate) return false;
+            if (f.endDate && d > f.endDate) return false;
+        }
+        return true;
+    });
+
     const pending = STATE.orders.filter(o => o.status === 'Pending').length;
     const ordered = STATE.orders.filter(o => o.status === 'Ordered').length;
     const shipped = STATE.orders.filter(o => o.status === 'Shipped_to_HK').length;
-    const completed = STATE.orders.filter(o => o.status === 'Completed').length; // Finance waiting
+    const completed = STATE.orders.filter(o => o.status === 'Completed').length;
 
-    STATE.orders.forEach(o => {
-        if (o.status === 'Cancelled') return;
-
+    filteredOrders.forEach(o => {
         // Metrics only for SETTLED (Completed) orders
         if (o.status === 'Settled') {
-            const p = Number(o.price_hkd) || 0;
-            const c = Number(o.cost_krw) || 0;
-            const s = Number(o.ship_fee_krw) || 0;
-            const l = Number(o.local_fee_hkd) || 0;
+            const p = Number(o.price_hkd) || 0; // Revenue (HKD)
+            const c = Number(o.cost_krw) || 0; // Purchase Cost (KRW)
+            const s_hkd = Number(o.ship_fee_krw) || 0; // Ship Fee is HKD now (column reused)
+            const l_hkd = Number(o.local_fee_hkd) || 0; // Local Fee (HKD)
 
-            revenue += p;
+            revenue += p; // HKD Revenue
+            cost += c;    // KRW Cost (Purchase only)
+
             const rate = STATE.exchangeRate;
-            const realizedProfit = (p * rate) - (c + s) - (l * rate);
 
-            cost += (c + s); // Realized Cost
-            profit += realizedProfit;
+            // Profit Calculation
+            if (STATE.currencyMode === 'KRW') {
+                const income_krw = p * rate;
+                const expense_krw = c + (s_hkd * rate) + (l_hkd * rate);
+                profit += (income_krw - expense_krw);
+            } else {
+                // Profit in HKD
+                const cost_hkd = c / rate;
+                profit += (p - cost_hkd - s_hkd - l_hkd);
+            }
         }
     });
 
     // Update UI
     dom.statProfit.textContent = Math.round(profit).toLocaleString();
-    dom.statRevenue.textContent = revenue.toLocaleString();
-    dom.statCost.textContent = Math.round(cost).toLocaleString();
+    dom.statRevenue.textContent = revenue.toLocaleString(); // HKD
+    dom.statCost.textContent = Math.round(cost).toLocaleString(); // KRW
 
+    // Badges stay total count
     dom.badges.pending.textContent = pending;
     dom.badges.ordered.textContent = ordered;
     dom.badges.shippedKr.textContent = shipped;
     dom.badges.completed.textContent = completed;
+
+    // Toggle Label Update
+    const label = document.getElementById('label-curr-mode');
+    if (label) label.textContent = STATE.currencyMode;
+}
+
+function toggleCurrencyMode() {
+    STATE.currencyMode = STATE.currencyMode === 'KRW' ? 'HKD' : 'KRW';
+    // dom.btnCurrKrw... logic removed as buttons are gone
+    renderDashboard();
 }
 
 // --- GENERIC LIST RENDERER ---
@@ -537,7 +579,20 @@ function setDateFilter(days) {
 
     document.getElementById('filter-date-start').value = STATE.filters.startDate;
     document.getElementById('filter-date-end').value = STATE.filters.endDate;
+    document.getElementById('filter-date-end').value = STATE.filters.endDate;
     renderOrderList();
+}
+
+function setDashDateFilter(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    const fmt = (d) => d.toISOString().split('T')[0];
+    STATE.dashFilters.startDate = fmt(start);
+    STATE.dashFilters.endDate = fmt(end);
+    document.getElementById('dash-date-start').value = STATE.dashFilters.startDate;
+    document.getElementById('dash-date-end').value = STATE.dashFilters.endDate;
+    renderDashboard();
 }
 
 function resetFilters() {

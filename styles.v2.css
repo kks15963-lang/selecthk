@@ -156,13 +156,58 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     cursor: pointer;
+    padding: 10px 5px;
+    border-radius: 12px;
+    transition: all 0.2s;
 }
+
+.pipeline-step:active {
+    transform: scale(0.95);
+}
+
+/* Status Specific Colors */
+.step-pending {
+    background: #fff1f2;
+    border: 1px solid #fee2e2;
+}
+
+.step-pending .step-count {
+    color: #ef4444;
+}
+
+.step-ordered {
+    background: #fffbeb;
+    border: 1px solid #fef3c7;
+}
+
+.step-ordered .step-count {
+    color: #d97706;
+}
+
+.step-shipped {
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+}
+
+.step-shipped .step-count {
+    color: #2563eb;
+}
+
+.step-completed {
+    background: #f0fdf4;
+    border: 1px solid #dcfce7;
+}
+
+.step-completed .step-count {
+    color: #16a34a;
+}
+
 
 .step-count {
     font-size: 20px;
     font-weight: 800;
-    color: var(--text-main);
     margin-bottom: 5px;
 }
 
@@ -695,6 +740,20 @@ body {
     align-items: center;
     justify-content: center;
     flex-direction: column;
+}
+
+.loading-spinner {
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Receipt Animation */
