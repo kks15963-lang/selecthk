@@ -1109,12 +1109,12 @@ function addProductRow(data = null) {
     // Inputs (Simplified for Card Look)
     row.innerHTML = `
         <div style="margin-bottom:12px;">
-            <label style="font-size:12px; color:#64748b; font-weight:600;">상품명</label>
-            <input class="form-input inp-product" placeholder="상품명을 입력하세요" value="${data ? data.product : ''}" style="margin-top:4px;">
+            <label style="font-size:12px; color:#64748b; font-weight:600;">상품명 <span style="color:#ef4444">*</span></label>
+            <input class="form-input inp-product" list="list-products" placeholder="상품명 검색 또는 입력" value="${data ? data.product : ''}" style="margin-top:4px;">
         </div>
         <div class="row">
             <div style="flex:1;">
-                <label style="font-size:12px; color:#64748b; font-weight:600;">수량</label>
+                <label style="font-size:12px; color:#64748b; font-weight:600;">수량 <span style="color:#ef4444">*</span></label>
                 <input class="form-input inp-qty" type="number" placeholder="1" value="${data ? data.qty : ''}" style="margin-top:4px;">
             </div>
             <div style="flex:1;">
@@ -1123,10 +1123,36 @@ function addProductRow(data = null) {
             </div>
         </div>
         <div style="margin-top:12px;">
-             <label style="font-size:12px; color:#64748b; font-weight:600;">옵션/사이즈</label>
-             <input class="form-input inp-option" placeholder="옵션 정보" value="${data ? data.option : ''}" style="margin-top:4px;">
+             <label style="font-size:12px; color:#64748b; font-weight:600;">옵션/사이즈 <span style="color:#ef4444">*</span></label>
+             <input class="form-input inp-option" list="list-options-${Date.now()}-${Math.random()}" placeholder="옵션 정보" value="${data ? data.option : ''}" style="margin-top:4px;">
+             <datalist id="list-options-${Date.now()}-${Math.random()}"></datalist>
         </div>
     `;
+
+    // Autocomplete Logic
+    const inpProd = row.querySelector('.inp-product');
+    const inpOpt = row.querySelector('.inp-option');
+    const dlOpt = row.querySelector('datalist'); // The specific datalist for this row
+
+    // Product Autocomplete (Global List - ensure it exists in DOM or create once)
+    if (!document.getElementById('list-products')) {
+        const dl = document.createElement('datalist');
+        dl.id = 'list-products';
+        document.body.appendChild(dl);
+    }
+    updateProductDatalist();
+
+    // Option Autocomplete (Context Aware)
+    inpProd.addEventListener('input', () => {
+        const prodName = inpProd.value.trim();
+        updateOptionDatalist(dlOpt, prodName);
+    });
+    // Init Option list if data exists
+    if (data && data.product) {
+        updateOptionDatalist(dlOpt, data.product);
+    }
+    // Also update generic product list on focus to ensure latest
+    inpProd.addEventListener('focus', updateProductDatalist);
 
     // Long Press Events
     const startPress = (e) => {
@@ -1259,16 +1285,63 @@ if (sheet.overlay) {
 }
 
 async function saveOrder() {
-    // Collect Data & Send
-    // Simplified for Refactor
+    // 1. Validate Customer
+    const customer = dom.form.customer.value.trim();
+    if (!customer) return alert("고객명을 입력해주세요");
+
+    const date = dom.form.date.value;
+    const address = dom.form.address.value.trim();
+    const remarks = dom.form.remarks.value.trim();
+
+    // 2. Validate Rows
+    const rows = Array.from(dom.form.container.children);
+    if (rows.length === 0) return alert("최소 1개 이상의 상품을 등록해야 합니다");
+
+    const orderItems = [];
+    for (const row of rows) {
+        const product = row.querySelector('.inp-product').value.trim();
+        const qty = row.querySelector('.inp-qty').value;
+        const price = row.querySelector('.inp-price').value;
+        const option = row.querySelector('.inp-option').value.trim();
+
+        if (!product) return alert("모든 상품의 '상품명'을 입력해주세요");
+        if (!qty || Number(qty) <= 0) return alert("모든 상품의 '수량'을 올바르게 입력해주세요");
+        if (!option) return alert("모든 상품의 '옵션/사이즈'를 입력해주세요");
+
+        orderItems.push({
+            customer_id: customer,
+            product_name: product,
+            option: option,
+            qty: Number(qty),
+            price_hkd: Number(price) || 0,
+            order_date: date,
+            status: 'Pending',
+            address: address, // Lead order address
+            remarks: remarks
+        });
+    }
+
+    // 3. Send to Server
     const payload = {
-        action: 'createOrder', // or update
-        customer_id: dom.form.customer.value,
-        // ...
-        status: 'Pending'
+        action: 'createOrder',
+        orders: orderItems
     };
-    alert('주문이 저장되었습니다. (Server Logic Skipped in Refactor Preview)');
-    navigate('view-list');
+
+    showLoading();
+    try {
+        const res = await sendData(payload);
+        if (res) {
+            alert('주문이 성공적으로 등록되었습니다.');
+            openOrderForm(false); // Close
+            renderOrderList();
+            renderDashboard();
+        }
+    } catch (e) {
+        console.error(e);
+        alert('저장 실패: ' + e.message);
+    } finally {
+        hideLoading();
+    }
 }
 
 // 2. PURCHASE
@@ -1694,6 +1767,34 @@ function showToast(msg) {
     t.className = 'toast'; t.textContent = msg;
     dom.toastContainer.appendChild(t);
     setTimeout(() => t.remove(), 2000);
+}
+
+// AUTOCOMPLETE HELPERS
+function updateProductDatalist() {
+    const dl = document.getElementById('list-products');
+    if (!dl) return;
+
+    const unique = [...new Set(STATE.orders.map(o => o.product_name).filter(Boolean))];
+    dl.innerHTML = '';
+    unique.sort().forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        dl.appendChild(opt);
+    });
+}
+
+function updateOptionDatalist(datalistEl, prodName) {
+    if (!datalistEl || !prodName) return;
+
+    const relevant = STATE.orders.filter(o => o.product_name === prodName).map(o => o.option).filter(Boolean);
+    const unique = [...new Set(relevant)];
+
+    datalistEl.innerHTML = '';
+    unique.sort().forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o;
+        datalistEl.appendChild(opt);
+    });
 }
 
 // START
