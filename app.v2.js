@@ -421,18 +421,32 @@ function setupEvents() {
 // ENTRY POINT
 async function init() {
     showLoading();
-    fetchExchangeRate(); // Get Rate Immediately
+    try {
+        await fetchExchangeRate(); // Get Rate Immediately
+    } catch (e) {
+        console.error("Exchange rate init failed", e);
+    }
 
-    return STATE.orders.find(o => o.order_id === STATE.managementTargetId);
+    // Check if we have a stored auth or just show auth screen
+    // For now, straightforward: Hide loading, show Auth Overlay (which is default visible in HTML?)
+    // Actually, HTML usually has main content hidden or overlay on top.
+
+    // If Auth Overlay is visible by default in HTML, we just need to hide the loading spinner.
+    hideLoading();
+
+    // If we want to auto-login (optional feature not yet requested), we'd do it here.
 }
 
 
 // ================= LOGIC =================
 async function attemptAuth() {
-    if (!dom.authCode.value) return;
+    if (!dom.authCode.value) return alert("인증코드를 입력해주세요");
+
+    showLoading(); // Show spinner while checking
     STATE.auth = dom.authCode.value;
-    dom.authOverlay.style.display = 'none';
-    loadData();
+
+    // Try to load data to verify auth
+    await loadData();
 }
 
 async function loadData() {
@@ -447,6 +461,7 @@ async function loadData() {
         const json = await res.json();
         if (json.success) {
             STATE.orders = json.data;
+            dom.authOverlay.style.display = 'none'; // Explicitly hide Auth Overlay
             renderDashboard();
             if (STATE.selectedTab !== 'view-dashboard') navigate(STATE.selectedTab);
         } else {
@@ -567,7 +582,7 @@ function renderDashboard() {
             let profitVal = 0;
             if (STATE.currencyMode === 'KRW') {
                 const income_krw = p * rate;
-                const expense_krw = c + (s_hkd * rate) + (l_hkd * rate);
+                const expense_krw = c + Number(o.ship_fee_krw || 0) + (l_hkd * rate);
                 profitVal = income_krw - expense_krw;
             } else {
                 const cost_hkd = c / rate;
@@ -581,8 +596,8 @@ function renderDashboard() {
                 </div>
                 <div style="font-size:11px; color:#64748b; display:flex; flex-direction:column; gap:2px;">
                     <div>매출: HKD ${p.toLocaleString()}</div>
-                    <div>비용: KRW ${c.toLocaleString()} + 배송비</div>
-                    <div>(환율 적용: ${rate})</div>
+                    <div>비용: KRW ${c.toLocaleString()} (HKD ${(c / rate).toFixed(2)}) (상품) + ${Number(o.ship_fee_krw || 0).toLocaleString()} (HKD ${(Number(o.ship_fee_krw || 0) / rate).toFixed(2)}) (배대지) + HKD ${Number(o.local_fee_hkd || 0).toLocaleString()} (현지)</div>
+                    <div>(환율 적용: ${rate.toFixed(2)})</div>
                 </div>
             `;
             profitContainer.appendChild(el);
@@ -718,10 +733,18 @@ function renderOrderList() {
         return true;
     });
 
-    const items = filtered.sort((a, b) => b.order_id.localeCompare(a.order_id)); // Newest first
+    const items = filtered.sort((a, b) => b.order_id.localeCompare(a.order_id));
 
-    items.forEach(o => {
-        dom.lists.all.appendChild(createCard(o, null)); // Short click does nothing (Use Long Press)
+    // Pagination
+    const totalItems = items.length;
+    renderPaginationControls(dom.lists.all, totalItems, renderOrderList);
+
+    const { currentPage, itemsPerPage } = STATE.pagination;
+    const start = (currentPage - 1) * itemsPerPage;
+    const displayItems = items.slice(start, start + itemsPerPage);
+
+    displayItems.forEach(o => {
+        dom.lists.all.appendChild(createCard(o, null));
     });
 }
 
@@ -732,6 +755,8 @@ function renderPurchaseList() {
 
     // Pagination
     const totalItems = items.length;
+    renderPaginationControls(dom.lists.purchase, totalItems, renderPurchaseList);
+
     const { currentPage, itemsPerPage } = STATE.pagination;
     const start = (currentPage - 1) * itemsPerPage;
     const displayItems = items.slice(start, start + itemsPerPage);
@@ -758,8 +783,7 @@ function renderPurchaseList() {
         dom.lists.purchase.appendChild(card);
     });
 
-    renderPaginationControls(dom.lists.purchase, totalItems, renderPurchaseList);
-}
+};
 
 function renderKoreaList() {
     dom.lists.korea.innerHTML = '';
@@ -768,6 +792,8 @@ function renderKoreaList() {
 
     // Pagination
     const totalItems = items.length;
+    renderPaginationControls(dom.lists.korea, totalItems, renderKoreaList);
+
     const { currentPage, itemsPerPage } = STATE.pagination;
     const start = (currentPage - 1) * itemsPerPage;
     const displayItems = items.slice(start, start + itemsPerPage);
@@ -796,8 +822,7 @@ function renderKoreaList() {
         dom.lists.korea.appendChild(card);
     });
 
-    renderPaginationControls(dom.lists.korea, totalItems, renderKoreaList);
-}
+};
 
 function renderHongKongList() {
     dom.lists.hk.innerHTML = '';
@@ -818,6 +843,8 @@ function renderHongKongList() {
     const customerIds = Object.keys(grouped);
     // Pagination for Groups
     const totalItems = customerIds.length;
+    renderPaginationControls(dom.lists.hk, totalItems, renderHongKongList);
+
     const { currentPage, itemsPerPage } = STATE.pagination;
     const start = (currentPage - 1) * itemsPerPage;
     const displayIds = customerIds.slice(start, start + itemsPerPage);
@@ -828,8 +855,7 @@ function renderHongKongList() {
         dom.lists.hk.appendChild(card);
     });
 
-    renderPaginationControls(dom.lists.hk, totalItems, renderHongKongList);
-}
+};
 
 function createCustomerGroupCard(customerId, group) {
     const el = document.createElement('div');
@@ -894,10 +920,18 @@ function createCustomerGroupCard(customerId, group) {
 
 function renderFinanceList() {
     dom.lists.finance.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Completed');
+    const items = STATE.orders.filter(o => o.status === 'Settled'); // Correct status?
     updateGlobalAction('finance', STATE.selectedFinanceIds.size);
 
-    items.forEach(o => {
+    // Pagination
+    const totalItems = items.length;
+    renderPaginationControls(dom.lists.finance, totalItems, renderFinanceList);
+
+    const { currentPage, itemsPerPage } = STATE.pagination;
+    const start = (currentPage - 1) * itemsPerPage;
+    const displayItems = items.slice(start, start + itemsPerPage);
+
+    displayItems.forEach(o => {
         const card = createCard(o, null);
         const isSelected = STATE.selectedFinanceIds.has(o.order_id);
         if (isSelected) card.classList.add('selected-glow');
@@ -1471,17 +1505,8 @@ function openSettlementModal() {
     dom.modals.settlement.classList.remove('hidden');
     dom.inpSettleTotal.value = '';
 }
+
 async function saveBulkSettlement() {
-    // Note: This function might be triggered by button click directly or via modal.
-    // Current flow: Click Bulk Button -> Open Modal -> Confirm -> Save.
-    // Or just Click Bulk Button -> Alert Price -> Confirm?
-    // User requested "Bulk Settle Function".
-
-    // Check if modal logic is needed or just direct confirmation
-    // Existing logic opens modal. 
-    // Let's keep modal but pre-fill totals? Or separate button?
-    // "일괄 정산 기능 추가" usually means updating status to Settled.
-
     const ids = Array.from(STATE.selectedFinanceIds);
     if (ids.length === 0) return alert("정산할 주문을 선택해주세요");
 
@@ -1531,36 +1556,13 @@ function setCurrency(c) {
     renderDashboard();
 }
 
-renderDashboard();
-
-
-async function fetchExchangeRate() {
-    try {
-        const res = await fetch(CONFIG.EXCHANGE_API);
-        const data = await res.json();
-        if (data && data.rates && data.rates.KRW) {
-            STATE.exchangeRate = data.rates.KRW;
-            const input = document.getElementById('inp-exchange-rate');
-            if (input) input.value = STATE.exchangeRate;
-            renderDashboard();
-            console.log("Updated Exchange Rate:", STATE.exchangeRate);
-        }
-    } catch (e) {
-        console.error("Failed to fetch rate", e);
-        // Fallback already in CONFIG
-    }
-}
-
-renderDashboard();
-
-
 async function fetchExchangeRate() {
     try {
         console.log("Fetching Exchange Rate from:", CONFIG.EXCHANGE_API);
         const res = await fetch(CONFIG.EXCHANGE_API);
         const data = await res.json();
         if (data && data.rates && data.rates.KRW) {
-            STATE.exchangeRate = data.rates.KRW;
+            STATE.exchangeRate = Number(data.rates.KRW.toFixed(2)); // Pre-process directly
             const input = document.getElementById('inp-exchange-rate');
             if (input) input.value = STATE.exchangeRate.toFixed(2);
             renderDashboard();
@@ -1569,15 +1571,128 @@ async function fetchExchangeRate() {
         }
     } catch (e) {
         console.error("Failed to fetch rate", e);
+        showToast("환율 로딩 실패 (기본값 사용)");
     }
 }
 
+// ================= PAGINATION COMPONENT =================
+function renderPaginationControls(container, totalItems, renderFunc) {
+    if (!container) return;
+
+    // Basic safeguards
+    if (!STATE.pagination) STATE.pagination = { currentPage: 1, itemsPerPage: 10 };
+
+    const { currentPage, itemsPerPage } = STATE.pagination;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pagination-wrapper';
+    wrapper.style.display = 'flex';
+    wrapper.style.justifyContent = 'space-between';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.padding = '10px 0';
+    wrapper.style.marginBottom = '10px';
+    wrapper.style.borderBottom = '1px solid #f1f5f9';
+
+    // 1. Limit Selector
+    const limitSelect = document.createElement('select');
+    limitSelect.className = 'form-input';
+    limitSelect.style.width = 'auto';
+    limitSelect.style.padding = '5px 10px';
+    limitSelect.style.fontSize = '12px';
+    [10, 30, 50].forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.text = `${n}개씩`;
+        if (itemsPerPage === n) opt.selected = true;
+        limitSelect.appendChild(opt);
+    });
+    limitSelect.onchange = (e) => {
+        STATE.pagination.itemsPerPage = Number(e.target.value);
+        STATE.pagination.currentPage = 1; // Reset to 1 on limit change
+        renderFunc();
+    };
+
+    // 2. Page Buttons
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'flex';
+    btnContainer.style.gap = '5px';
+
+    const createBtn = (label, page, isActive = false, disabled = false) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = label; // Use innerHTML for symbols
+        btn.className = isActive ? 'btn-secondary active' : 'btn-secondary';
+        btn.style.width = '30px';
+        btn.style.height = '30px';
+        btn.style.padding = '0';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+
+        if (isActive) {
+            btn.style.background = '#2563eb';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#2563eb';
+        }
+
+        if (disabled) {
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.disabled = true;
+        } else {
+            btn.onclick = () => {
+                STATE.pagination.currentPage = page;
+                renderFunc();
+                // Scroll to top of list
+                if (container.previousElementSibling) {
+                    container.previousElementSibling.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+        }
+        return btn;
+    };
+
+    // Prev
+    btnContainer.appendChild(createBtn('&lt;', currentPage - 1, false, currentPage <= 1));
+
+    // Page Numbers (Window of 5)
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+
+    // Adjust window if close to end
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+
+    // Boundary checks
+    startPage = Math.max(1, startPage);
+    endPage = Math.min(totalPages, endPage);
+
+    // If no items, show at least page 1
+    if (totalPages === 0) endPage = 1;
+
+    for (let i = startPage; i <= endPage; i++) {
+        btnContainer.appendChild(createBtn(String(i), i, i === currentPage));
+    }
+
+    // Next
+    btnContainer.appendChild(createBtn('&gt;', currentPage + 1, false, currentPage >= totalPages));
+
+    wrapper.appendChild(limitSelect);
+    wrapper.appendChild(btnContainer);
+    container.appendChild(wrapper);
+}
+
 // UTILS
-function showLoading() { dom.loadingOverlay.classList.remove('hidden'); }
-function hideLoading() { dom.loadingOverlay.classList.add('hidden'); }
+function showLoading() { if (dom.loadingOverlay) dom.loadingOverlay.classList.remove('hidden'); }
+function hideLoading() { if (dom.loadingOverlay) dom.loadingOverlay.classList.add('hidden'); }
 function showToast(msg) {
+    if (!dom.toastContainer) return;
     const t = document.createElement('div');
     t.className = 'toast'; t.textContent = msg;
     dom.toastContainer.appendChild(t);
     setTimeout(() => t.remove(), 2000);
 }
+
+// START
+window.onload = init;
