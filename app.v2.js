@@ -523,9 +523,9 @@ function renderDashboard() {
     filteredOrders.forEach(o => {
         // Metrics only for SETTLED (Completed) orders
         if (o.status === 'Settled') {
-            const p = Number(o.price_hkd) || 0; // Revenue (HKD)
+            const p = Number(o.price_hkd) || 0; // Revenue (HKD
             const c = Number(o.cost_krw) || 0; // Purchase Cost (KRW)
-            const s_hkd = Number(o.ship_fee_krw) || 0; // Ship Fee is HKD now (column reused)
+            const s_hkd = Number(o.ship_fee_krw) || 0; // Ship Fee (Stored in KRW col, but Value is HKD)
             const l_hkd = Number(o.local_fee_hkd) || 0; // Local Fee (HKD)
 
             revenue += p; // HKD Revenue
@@ -536,6 +536,7 @@ function renderDashboard() {
             // Profit Calculation
             if (STATE.currencyMode === 'KRW') {
                 const income_krw = p * rate;
+                // Expenses: c (KRW) + s_hkd (HKD->KRW) + l_hkd (HKD->KRW)
                 const expense_krw = c + (s_hkd * rate) + (l_hkd * rate);
                 profit += (income_krw - expense_krw);
             } else {
@@ -574,7 +575,7 @@ function renderDashboard() {
 
             const p = Number(o.price_hkd) || 0;
             const c = Number(o.cost_krw) || 0;
-            const s_hkd = Number(o.ship_fee_krw) || 0;
+            const s_hkd = Number(o.ship_fee_krw) || 0; // Value is HKD
             const l_hkd = Number(o.local_fee_hkd) || 0;
             const rate = STATE.exchangeRate;
 
@@ -582,7 +583,8 @@ function renderDashboard() {
             let profitVal = 0;
             if (STATE.currencyMode === 'KRW') {
                 const income_krw = p * rate;
-                const expense_krw = c + Number(o.ship_fee_krw || 0) + (l_hkd * rate);
+                // Cost (KRW) + Ship(HKD->KRW) + Local(HKD->KRW)
+                const expense_krw = c + (s_hkd * rate) + (l_hkd * rate);
                 profitVal = income_krw - expense_krw;
             } else {
                 const cost_hkd = c / rate;
@@ -596,7 +598,7 @@ function renderDashboard() {
                 </div>
                 <div style="font-size:11px; color:#64748b; display:flex; flex-direction:column; gap:2px;">
                     <div>매출: HKD ${p.toLocaleString()}</div>
-                    <div>비용: KRW ${c.toLocaleString()} (HKD ${(c / rate).toFixed(2)}) (상품) + ${Number(o.ship_fee_krw || 0).toLocaleString()} (HKD ${(Number(o.ship_fee_krw || 0) / rate).toFixed(2)}) (배대지) + HKD ${Number(o.local_fee_hkd || 0).toLocaleString()} (현지)</div>
+                    <div>비용: KRW ${c.toLocaleString()} (상품) + HKD ${s_hkd.toLocaleString()} (배대지) + HKD ${l_hkd.toLocaleString()} (현지)</div>
                     <div>(환율 적용: ${rate.toFixed(2)})</div>
                 </div>
             `;
@@ -945,7 +947,7 @@ function renderFinanceList() {
 
         // Show Profit logic
         const p = Number(o.price_hkd) * STATE.exchangeRate;
-        const c = Number(o.cost_krw) + Number(o.ship_fee_krw);
+        const c = Number(o.cost_krw) + (Number(o.ship_fee_krw || 0) * STATE.exchangeRate);
         const prof = p - c;
         const div = document.createElement('div');
         div.style.fontSize = '12px'; div.style.color = prof > 0 ? '#10b981' : '#ef4444';
@@ -1338,14 +1340,14 @@ async function saveKoreaShipping() {
         const count = STATE.selectedKoreaIds.size;
         const costPerItem = Math.floor(totalCost / count);
 
-        if (!confirm(`선택한 ${count}개 상품에 대해\\n총 배송비: ${totalCost.toLocaleString()}원\\n개당 부담: ${costPerItem.toLocaleString()}원\\n으로 발송 처리하시겠습니까?`)) return;
+        if (!confirm(`선택한 ${count}개 상품에 대해\n총 배송비: HKD ${totalCost.toLocaleString()}\n개당 부담: HKD ${costPerItem.toLocaleString()}\n으로 발송 처리하시겠습니까?`)) return;
 
         showLoading();
         const updates = [];
         STATE.selectedKoreaIds.forEach(id => {
             updates.push({
                 order_id: id,
-                ship_fee_krw: costPerItem,
+                ship_fee_krw: costPerItem, // Send to KRW Col, but Value is HKD
                 status: 'Shipped_to_HK'
             });
             // Local Update
