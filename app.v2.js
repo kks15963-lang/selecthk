@@ -1140,7 +1140,7 @@ function addProductRow(data = null) {
         <div class="row">
             <div style="flex:1;">
                 <label style="font-size:12px; color:#64748b; font-weight:600;">수량 <span style="color:#ef4444">*</span></label>
-                <input class="form-input inp-qty" type="number" placeholder="1" value="${data ? data.qty : ''}" style="margin-top:4px;">
+                <input class="form-input inp-qty" type="number" placeholder="1" value="${data ? data.qty : '1'}" style="margin-top:4px;">
             </div>
             <div style="flex:1;">
                 <label style="font-size:12px; color:#64748b; font-weight:600;">단가 (HKD)</label>
@@ -1168,14 +1168,22 @@ function addProductRow(data = null) {
     updateProductDatalist();
 
     // Option Autocomplete (Context Aware)
-    inpProd.addEventListener('input', () => {
+    const handleOptionUpdate = () => {
         const prodName = inpProd.value.trim();
         updateOptionDatalist(dlOpt, prodName);
-    });
+    };
+
+    inpProd.addEventListener('input', handleOptionUpdate);
+    inpProd.addEventListener('change', handleOptionUpdate); // Also on change (blur)
+
+    // CRITICAL: Update when Option field is focused too!
+    inpOpt.addEventListener('focus', handleOptionUpdate);
+
     // Init Option list if data exists
     if (data && data.product) {
-        updateOptionDatalist(dlOpt, data.product);
+        handleOptionUpdate();
     }
+
     // Also update generic product list on focus to ensure latest
     inpProd.addEventListener('focus', updateProductDatalist);
 
@@ -1715,29 +1723,14 @@ function renderPaginationControls(container, totalItems, renderFunc) {
 
     // 2. Page Buttons
     const btnContainer = document.createElement('div');
-    btnContainer.style.display = 'flex';
-    btnContainer.style.gap = '5px';
+    btnContainer.className = 'pagination-controls';
 
     const createBtn = (label, page, isActive = false, disabled = false) => {
         const btn = document.createElement('button');
-        btn.innerHTML = label; // Use innerHTML for symbols
-        btn.className = isActive ? 'btn-secondary active' : 'btn-secondary';
-        btn.style.width = '30px';
-        btn.style.height = '30px';
-        btn.style.padding = '0';
-        btn.style.display = 'flex';
-        btn.style.alignItems = 'center';
-        btn.style.justifyContent = 'center';
-
-        if (isActive) {
-            btn.style.background = '#2563eb';
-            btn.style.color = 'white';
-            btn.style.borderColor = '#2563eb';
-        }
+        btn.innerHTML = label;
+        btn.className = isActive ? 'pagination-btn active' : 'pagination-btn';
 
         if (disabled) {
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
             btn.disabled = true;
         } else {
             btn.onclick = () => {
@@ -1815,6 +1808,46 @@ function updateOptionDatalist(datalistEl, prodName) {
     const unique = [...new Set(relevant)];
 
     datalistEl.innerHTML = '';
+    unique.sort().forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o;
+        datalistEl.appendChild(opt);
+    });
+}
+
+// AUTOCOMPLETE HELPERS
+function updateProductDatalist() {
+    const dl = document.getElementById('list-products');
+    if (!dl) return;
+
+    // Get unique product names from existing orders
+    const unique = [...new Set(STATE.orders.map(o => o.product_name).filter(Boolean))];
+
+    // Clear and refill
+    dl.innerHTML = '';
+    unique.sort().forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        dl.appendChild(opt);
+    });
+}
+
+function updateOptionDatalist(datalistEl, prodName) {
+    if (!datalistEl) return;
+
+    // Always start fresh
+    datalistEl.innerHTML = '';
+
+    if (!prodName) return; // No product name = no suggestions
+
+    // Find options used for this specific product
+    const relevant = STATE.orders
+        .filter(o => o.product_name && o.product_name.toLowerCase() === prodName.toLowerCase())
+        .map(o => o.option)
+        .filter(Boolean);
+
+    const unique = [...new Set(relevant)];
+
     unique.sort().forEach(o => {
         const opt = document.createElement('option');
         opt.value = o;
