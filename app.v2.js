@@ -8,7 +8,7 @@
 // 1. CONFIGURATION & STATE
 // =========================================
 const CONFIG = {
-    API_URL: "https://script.google.com/macros/s/AKfycbws4QQLos3owcH6Yx-IydldGdpFWqT0c-q8btVFV8Mo5bhvh1inHywmdBnMrJDeFZdWgg/exec",
+    API_URL: "https://script.google.com/macros/s/AKfycbxCoxgLFrRlLehBdcjnLkF8h5-a9NTopYibonQ7E_uTa_ZoIilazv0lWIRXZt7oAzisnA/exec",
     IS_MOCK: false,
     DEFAULT_RATE: 170
 };
@@ -227,7 +227,6 @@ const dom = {
     },
 
     // Filters (Order List)
-
     // Filters (Order List)
     filterStatus: document.getElementById('filter-status'),
     filterProduct: document.getElementById('filter-product'),
@@ -259,7 +258,8 @@ const dom = {
         purchase: document.getElementById('purchase-modal'),
         korea: document.getElementById('korea-modal'),
         hk: document.getElementById('hk-modal'),
-        list: document.getElementById('list-modal') // New Generic Modal
+        list: document.getElementById('list-modal'),
+        settlement: document.getElementById('settlement-modal')
     },
     // List Modal Elements
     listModalTitle: document.getElementById('list-modal-title'),
@@ -287,6 +287,7 @@ const dom = {
     inpSettleTotal: document.getElementById('inp-settle-total'),
     btnCancelSettle: document.getElementById('btn-cancel-settle'),
     btnSaveSettle: document.getElementById('btn-save-settle'),
+    menu: document.getElementById('menu'), // Just in case
 
     // Select All Checkboxes
     cbAllPurchase: document.getElementById('cb-all-purchase'),
@@ -320,8 +321,10 @@ const dom = {
 // 3. INITIALIZATION
 // =========================================
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('App v4 Init'); // Debugging
     checkAuth();
     setupEvents();
+    fetchLiveRate(); // Fetch Rate
 });
 
 function setupEvents() {
@@ -1109,8 +1112,6 @@ function renderHongKongList(term = '') {
 
 function renderFinanceList() {
     dom.lists.finance.innerHTML = '';
-    // Removed automatic clearing
-    // STATE.selectedFinanceIds.clear();
 
     // STRICT: Only Completed
     const items = getOrdersByStatus('Completed');
@@ -1120,19 +1121,62 @@ function renderFinanceList() {
         return;
     }
 
-    // Dynamic Settle Button
+    // --- Header for Select All ---
+    const headerDiv = document.createElement('div');
+    headerDiv.style.padding = '10px 15px';
+    headerDiv.style.display = 'flex';
+    headerDiv.style.alignItems = 'center';
+    headerDiv.style.borderBottom = '1px solid #eee';
+    headerDiv.style.backgroundColor = '#f8fafc';
+    headerDiv.style.marginBottom = '10px';
+    headerDiv.style.borderRadius = '8px';
+
+    const chkAll = createCheckbox((checked) => {
+        if (checked) items.forEach(o => STATE.selectedFinanceIds.add(o.order_id));
+        else items.forEach(o => STATE.selectedFinanceIds.delete(o.order_id));
+        renderFinanceList(); // Re-render to update individual checkboxes
+    });
+
+    // Initial State for Select All
+    const allSelected = items.length > 0 && items.every(o => STATE.selectedFinanceIds.has(o.order_id));
+    chkAll.querySelector('input').checked = allSelected;
+
+    const lbl = document.createElement('span');
+    lbl.textContent = `전체 선택 (${items.length}개)`;
+    lbl.style.fontSize = '14px';
+    lbl.style.fontWeight = '600';
+    lbl.style.marginLeft = '8px';
+    lbl.style.color = '#334155';
+
+    headerDiv.appendChild(chkAll);
+    headerDiv.appendChild(lbl);
+    dom.lists.finance.appendChild(headerDiv);
+    // -----------------------------
+
+    // Dynamic Settle Button (Main Tab Button)
     const btnSettle = document.createElement('button');
     btnSettle.className = 'btn-primary';
-    btnSettle.style.display = 'none';
+    btnSettle.style.display = 'none'; // Hidden by default
     btnSettle.style.marginBottom = '10px';
-    btnSettle.onclick = openSettlementModal; // Change to open Modal
+    btnSettle.onclick = openSettlementModal;
     dom.lists.finance.appendChild(btnSettle);
+
+    // Update Button State Helper
+    const updateBtnState = () => {
+        if (STATE.selectedFinanceIds.size > 0) {
+            btnSettle.style.display = 'block';
+            btnSettle.textContent = `${STATE.selectedFinanceIds.size}건 일괄 정산`;
+        } else {
+            btnSettle.style.display = 'none';
+        }
+    };
+    updateBtnState(); // Initial check
 
     items.forEach(o => {
         const div = document.createElement('div');
         div.className = 'card';
         div.style.borderLeft = '4px solid #10b981';
-        div.style.display = 'flex'; // Use flex for checkbox alignment
+        div.style.display = 'flex';
 
         // Calculate Profit for display
         const rate = STATE.exchangeRate;
@@ -1161,51 +1205,20 @@ function renderFinanceList() {
         const chk = createCheckbox((checked) => {
             if (checked) STATE.selectedFinanceIds.add(o.order_id);
             else STATE.selectedFinanceIds.delete(o.order_id);
+            updateBtnState();
 
-            // Update Header Checkbox State
-            updateHeaderCheckbox('finance', STATE.selectedFinanceIds.size === items.length);
-
-            if (STATE.selectedFinanceIds.size > 0) {
-                btnSettle.style.display = 'block';
-                btnSettle.textContent = `${STATE.selectedFinanceIds.size}건 일괄 정산`;
-            } else {
-                btnSettle.style.display = 'none';
-            }
+            // Optional: Update 'Select All' checkbox visually if needed, 
+            // but re-rendering full list is safer/easier for "Select All" state consistency
+            // For now, just update button. If user wants Select All to uncheck, we might need logic.
+            // Let's force re-render if we want perfect sync with header checkbox, 
+            // but that might be slow.
+            // Simple approach: Just update button.
         });
-        chk.checked = isSelected;
+        chk.querySelector('input').checked = isSelected;
 
-        // Wrap chk and content
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.width = '100%';
-        wrapper.onclick = (e) => {
-            // Let click pass to checkbox if not clicked directly?
-            // Or allow clicking card to toggle? 
-            // Better to just let checkbox handle it for consistency with other tabs
-            // Or click card to "Edit"? No edit in Finance usually.
-        };
-
-        div.prepend(chk); // Prepend to flex container 'div'
-        // Wait, 'div' innerHTML replaced content. 
-        // Need to structure correctly.
-        // div is flex. chk is first child. div content is second child.
-        // The innerHTML set above sets the content.
-        // So prepend works.
-
+        div.prepend(chk);
         dom.lists.finance.appendChild(div);
     });
-
-    // Initial Header Checkbox State
-    updateHeaderCheckbox('finance', items.length > 0 && STATE.selectedFinanceIds.size === items.length);
-
-    // Initial Button State
-    if (STATE.selectedFinanceIds.size > 0) {
-        btnSettle.style.display = 'block';
-        btnSettle.textContent = `${STATE.selectedFinanceIds.size}건 일괄 정산`;
-    } else {
-        btnSettle.style.display = 'none';
-    }
 }
 
 // =========================================
@@ -1245,9 +1258,56 @@ function showStatDetails(type) {
     const t = TRANS[STATE.lang];
 
     // Set Title
-    if (type === 'revenue') dom.listModalTitle.textContent = t.revenue;
-    if (type === 'profit') dom.listModalTitle.textContent = t.profit;
-    if (type === 'cost') dom.listModalTitle.textContent = t.settlement_needed;
+    dom.listModalTitle.innerHTML = ''; // Clear for custom content
+    const titleText = document.createElement('span');
+
+    if (type === 'revenue') titleText.textContent = t.revenue;
+    if (type === 'profit') titleText.textContent = t.profit;
+    if (type === 'cost') {
+        titleText.textContent = t.settlement_needed;
+
+        // Add "Select All" Checkbox for Cost
+        const headerContainer = document.createElement('div');
+        headerContainer.style.display = 'flex';
+        headerContainer.style.justifyContent = 'space-between';
+        headerContainer.style.alignItems = 'center';
+        headerContainer.style.width = '100%';
+
+        const chkAll = createCheckbox((checked) => {
+            if (checked) {
+                // Select All
+                items.forEach(o => STATE.selectedFinanceIds.add(o.order_id));
+            } else {
+                // Deselect All
+                items.forEach(o => STATE.selectedFinanceIds.delete(o.order_id));
+            }
+            // Re-render individual checkboxes (brute force re-render list or update DOM)
+            // Simpler to re-render list content
+            showStatDetails('cost');
+        });
+
+        // Check if all are selected to set initial state
+        const allSelected = items.length > 0 && items.every(o => STATE.selectedFinanceIds.has(o.order_id));
+        chkAll.querySelector('input').checked = allSelected;
+
+        const lbl = document.createElement('span');
+        lbl.textContent = 'Select All';
+        lbl.style.fontSize = '12px';
+        lbl.style.marginLeft = '5px';
+
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.appendChild(chkAll);
+        wrapper.appendChild(lbl);
+
+        headerContainer.appendChild(titleText);
+        headerContainer.appendChild(wrapper);
+
+        dom.listModalTitle.appendChild(headerContainer);
+    } else {
+        dom.listModalTitle.textContent = titleText.textContent;
+    }
 
     if (!items.length) {
         dom.listModalContent.innerHTML = renderEmptyMsg('Empty');
@@ -1603,16 +1663,18 @@ async function saveBulkSettlement() {
                 continue;
             }
 
+            // 1. Full Settle
             if (remaining >= profit) {
-                // Full Settle
-                updates.push({ order_id: o.order_id, status: 'Settled' });
+                updates.push({
+                    order_id: o.order_id,
+                    status: 'Settled',
+                    // Add debug remark?
+                    remarks: (o.remarks || '') + ' [Settled]'
+                });
                 remaining -= profit;
-            } else {
-                // Partial Settle
-                // We pay 'remaining'. The item keeps 'profit - remaining'.
-                // How to store? Increase Cost by 'remaining'.
-                // New Profit = Profit - remaining.
-
+            }
+            // 2. Partial Settle
+            else {
                 const newCost = (Number(o.cost_krw) || 0) + remaining;
                 const paidAmount = remaining;
                 remaining = 0; // All used
@@ -1621,10 +1683,13 @@ async function saveBulkSettlement() {
                     order_id: o.order_id,
                     cost_krw: newCost,
                     // Status remains 'Completed' (Not Settled)
-                    remarks: (o.remarks || '') + ` [Partial Settle: ${paidAmount}]`
+                    remarks: (o.remarks || '') + ` [Partial: ${paidAmount}]`
                 });
             }
         }
+
+        console.log('Sending Batch Updates:', updates);
+        // alert(`DEBUG: Sending ${updates.length} items to server...`); // Optional debug
 
         if (updates.length > 0) {
             await sendBatchUpdate(updates);
@@ -1634,7 +1699,7 @@ async function saveBulkSettlement() {
 
             dom.modals.settlement.style.display = 'none';
             loadData();
-            showToast('정산 처리가 완료되었습니다.');
+            showToast(`${updates.length}건 정산 완료 처리되었습니다.`);
         } else {
             alert('처리할 항목이 없습니다.');
         }
@@ -1936,6 +2001,43 @@ function createCard(order, simple = false) {
     return el;
 }
 
+
+// --- Live Exchange Rate ---
+async function fetchLiveRate() {
+    try {
+        // Free API: https://open.er-api.com/v6/latest/HKD
+        const res = await fetch('https://open.er-api.com/v6/latest/HKD');
+        const json = await res.json();
+        if (json && json.rates && json.rates.KRW) {
+            const liveRate = json.rates.KRW;
+            console.log('Live Rate (HKD->KRW):', liveRate);
+
+            // Update State
+            STATE.exchangeRate = liveRate;
+
+            // Update UI
+            if (dom.inpExRate) {
+                // dom.inpExRate.value = Math.round(liveRate); 
+                dom.inpExRate.value = liveRate.toFixed(2);
+            }
+
+            const lbl = document.getElementById('lbl-current-rate');
+            if (lbl) {
+                lbl.textContent = `Live: ${liveRate.toFixed(2)}`;
+                lbl.onclick = () => {
+                    dom.inpExRate.value = liveRate.toFixed(2);
+                    STATE.exchangeRate = liveRate;
+                    renderDashboard(); // Refresh UI with new rate
+                    showToast('Applying Live Rate...');
+                };
+            }
+
+            renderDashboard();
+        }
+    } catch (e) {
+        console.error('Failed to fetch live rate:', e);
+    }
+}
 
 function createCheckbox(onChange) {
     // Container for custom style

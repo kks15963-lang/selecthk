@@ -210,7 +210,7 @@
                 <div style="display:flex; align-items:center; gap:5px;">
                     <span style="font-size:12px; color:#64748b;" data-i18n="rate">환율:</span>
                     <input type="number" id="inp-ex-rate" value="170"
-                        style="width:50px; padding:4px; font-size:12px; border:1px solid #ccc; border-radius:4px;">
+                        style="width:80px; padding:4px; font-size:12px; border:1px solid #ccc; border-radius:4px; text-align:right;">
                     <span id="lbl-current-rate"
                         style="font-size:11px; color:#2563eb; background:#dbeafe; padding:2px 6px; border-radius:4px; cursor:pointer;">Live:
                         -</span>
@@ -304,17 +304,22 @@
     <div id="korea-modal" class="modal"
         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
         <div class="modal-content"
-            style="background:white; padding:20px; border-radius:12px; width:85%; max-width:320px;">
-            <h3>📦 <span data-i18n="sec_korea">배대지 발송</span></h3>
-            <p id="korea-modal-desc" style="margin-bottom:15px; color:#64748b; font-size:14px;"></p>
+            style="background:white; padding:20px; border-radius:12px; width:85%; max-width:320px; display:flex; flex-direction:column; gap:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;">📦 <span data-i18n="sec_korea">배대지 발송</span></h3>
+                <button onclick="document.getElementById('korea-modal').style.display='none'"
+                    style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+
+            <p id="korea-modal-desc" style="margin:0; color:#64748b; font-size:14px;"></p>
+
             <div class="form-group">
                 <label class="form-label" data-i18n="lbl_ship_total">총 배송비 (KRW)</label>
                 <input type="number" id="inp-ship-total" class="form-input" placeholder="0" data-i18n="ph_ship_total">
                 <p style="font-size:12px; color:#94a3b8; margin-top:5px;">* 1/N</p>
             </div>
-            <div class="row" style="margin-top:20px; gap:10px;">
-                <button id="btn-cancel-korea" class="btn-primary" style="background:#64748b;"
-                    data-i18n="btn_cancel">취소</button>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
                 <button id="btn-save-korea" class="btn-primary" data-i18n="btn_shipped">홍콩 발송 (Shipped)</button>
             </div>
         </div>
@@ -334,7 +339,7 @@
                 <!-- content -->
             </div>
             <!-- Footer for Settle Button -->
-            <div id="list-modal-footer" style="padding-top:10px; display:none; justify-content:flex-end;">
+            <div id="list-modal-footer" style="padding-top:15px; display:none; justify-content:flex-end;">
                 <button id="btn-settle-selected" class="btn-primary" style="background:#10b981;">정산 하기</button>
             </div>
         </div>
@@ -344,9 +349,14 @@
     <div id="hk-modal" class="modal"
         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
         <div class="modal-content"
-            style="background:white; padding:20px; border-radius:12px; width:85%; max-width:320px;">
-            <h3>🚚 <span data-i18n="sec_hongkong">고객 배송</span></h3>
-            <p id="hk-modal-desc" style="margin-bottom:15px; color:#64748b; font-size:14px;"></p>
+            style="background:white; padding:20px; border-radius:12px; width:85%; max-width:320px; display:flex; flex-direction:column; gap:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;">🚚 <span data-i18n="sec_hongkong">고객 배송</span></h3>
+                <button onclick="document.getElementById('hk-modal').style.display='none'"
+                    style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+
+            <p id="hk-modal-desc" style="margin:0; color:#64748b; font-size:14px;"></p>
 
             <div class="form-group">
                 <label class="form-label" data-i18n="lbl_delivery_method">배송 방식</label>
@@ -362,17 +372,19 @@
                 <input type="text" id="inp-delivery-address" class="form-input" placeholder="">
             </div>
             <div class="form-group">
-                <label class="form-label" data-i18n="lbl_tracking">송장 번호 (Tracking)</label>
-                <input type="text" id="inp-tracking" class="form-input" data-i18n="ph_tracking">
+                <label class="form-label">송장 번호 (Tracking)</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="inp-tracking" class="form-input" style="flex:1" data-i18n="ph_tracking">
+                    <button id="btn-scan-qr"
+                        style="padding:0 10px; border:1px solid #ccc; background:#f4f4f5; border-radius:8px;">📷</button>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label" data-i18n="lbl_local_fee">현지 비용 (HKD)</label>
                 <input type="number" id="inp-local-fee" class="form-input" value="0" data-i18n="ph_local_fee">
             </div>
 
-            <div class="row" style="margin-top:20px; gap:10px;">
-                <button id="btn-cancel-hk" class="btn-primary" style="background:#64748b;"
-                    data-i18n="btn_cancel">취소</button>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
                 <button id="btn-save-hk" class="btn-primary" data-i18n="btn_complete">배송 완료 (Complete)</button>
             </div>
         </div>
@@ -387,7 +399,6 @@
         </svg>
     </div>
 
-    <!-- Bottom Nav -->
     <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <button class="nav-item active" data-target="view-dashboard">
@@ -424,7 +435,12 @@
         style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
         <div class="modal-content"
             style="background:white; width:90%; max-width:400px; padding:20px; border-radius:12px; display:flex; flex-direction:column; gap:15px;">
-            <h3>일괄 정산 (Batch Settlement)</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;">일괄 정산 (Batch Settlement)</h3>
+                <button onclick="document.getElementById('settlement-modal').style.display='none'"
+                    style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+
             <div id="settlement-desc" style="font-size:14px; color:#666;"></div>
 
             <div>
@@ -432,8 +448,7 @@
                 <input type="number" id="inp-settle-total" class="form-input" placeholder="Enter Amount">
             </div>
 
-            <div class="row">
-                <button id="btn-cancel-settle" class="btn-primary" style="background:#dc2626;">취소 (Cancel)</button>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
                 <button id="btn-save-settle" class="btn-primary">정산 실행 (Settle)</button>
             </div>
         </div>
@@ -460,7 +475,7 @@
     <datalist id="dl-products"></datalist>
     <datalist id="dl-options"></datalist>
 
-    <script src="app.v2.js?v=3"></script>
+    <script src="app.v2.js?v=6.3"></script>
 </body>
 
 </html>
