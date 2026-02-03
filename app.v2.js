@@ -10,6 +10,31 @@ const CONFIG = {
     DEFAULT_RATE: 175 // Safe fallback
 };
 
+// --- SERVER UTILS ---
+async function sendData(payload) {
+    if (CONFIG.IS_MOCK) {
+        console.log("Mock Send:", payload);
+        return new Promise(r => setTimeout(() => r(true), 500));
+    }
+
+    // Google Apps Script usually requires 'text/plain' to skip preflight or handle simple requests comfortably
+    // And CORS might be an issue. 
+    try {
+        const res = await fetch(CONFIG.API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.result === 'success' || data.statis === 'success' || data.status === 'success') return true;
+        else throw new Error(data.message || "Server Error");
+    } catch (e) {
+        console.error("Send Failed:", e);
+        // If it's a CORS opaque error, we might not get JSON.
+        // But assuming the GAS is deployed properly for 'Any user', it should work.
+        throw e;
+    }
+}
+
 const TRANS = {
     ko: {
         btn_new_order: "새 주문 등록하고 시작하기",
