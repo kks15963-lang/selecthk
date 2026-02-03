@@ -8,7 +8,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.v2.css?v=11">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
@@ -68,7 +69,7 @@
         <!-- 1. DASHBOARD -->
         <section id="view-dashboard" class="section active">
             <!-- 61.8% Golden Ratio Spacer -->
-            <div class="golden-spacer"></div>
+
 
             <!-- Key Metric Hero -->
 
@@ -143,6 +144,10 @@
                     <span class="step-label" data-i18n="nav_finance">정산대기</span>
                 </div>
             </div>
+
+            <div style="height:30px;"></div>
+            <!-- Profit Breakdown List -->
+            <div id="dashboard-profit-list" class="card-list"></div>
 
         </section>
 
@@ -314,6 +319,16 @@
                     <button id="btn-curr-krw" class="btn-option active">KRW (원)</button>
                     <button id="btn-curr-hkd" class="btn-option">HKD (달러)</button>
                 </div>
+            </div>
+
+            <div class="settings-group">
+                <label>환율 설정 (Exchange Rate: HKD 1 = KRW ?)</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="inp-exchange-rate" class="form-input" placeholder="Loading..."
+                        style="flex:1;">
+                    <button id="btn-fetch-rate" class="btn-secondary" style="width:auto; padding:0 20px;">↺</button>
+                </div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:5px;">기본값: 실시간 환율 (수동 변경 가능)</div>
             </div>
 
             <div class="settings-group">

@@ -5,8 +5,9 @@
 
 const CONFIG = {
     API_URL: "https://script.google.com/macros/s/AKfycbxCoxgLFrRlLehBdcjnLkF8h5-a9NTopYibonQ7E_uTa_ZoIilazv0lWIRXZt7oAzisnA/exec",
+    EXCHANGE_API: "https://open.er-api.com/v6/latest/HKD",
     IS_MOCK: false,
-    DEFAULT_RATE: 170
+    DEFAULT_RATE: 175 // Safe fallback
 };
 
 const TRANS = {
@@ -66,7 +67,13 @@ let STATE = {
     selectedHkIds: new Set(), // Customer IDs
 
     // Management Selection
-    managementTargetId: null
+    managementTargetId: null,
+
+    // Pagination
+    pagination: {
+        currentPage: 1,
+        itemsPerPage: 10
+    }
 };
 
 // DOM Map
@@ -266,6 +273,12 @@ function setupEvents() {
     document.getElementById('filter-date-start').onchange = (e) => { STATE.filters.startDate = e.target.value; renderOrderList(); };
     document.getElementById('filter-date-end').onchange = (e) => { STATE.filters.endDate = e.target.value; renderOrderList(); };
 
+    // HK Delivery Search
+    const searchHk = document.getElementById('inp-search-hk');
+    if (searchHk) searchHk.oninput = renderHongKongList;
+
+    // Filter Buttons
+
     // Filter Buttons
     document.getElementById('btn-period-today').onclick = () => setDateFilter(0);
     document.getElementById('btn-period-week').onclick = () => setDateFilter(7);
@@ -291,6 +304,22 @@ function setupEvents() {
     dom.btnCurrKrw.onclick = () => setCurrency('KRW');
     dom.btnCurrHkd.onclick = () => setCurrency('HKD');
     dom.btnRefreshManual.onclick = loadData;
+
+    // Exchange Rate
+    const rateInput = document.getElementById('inp-exchange-rate');
+    const rateBtn = document.getElementById('btn-fetch-rate');
+    if (rateInput) {
+        rateInput.value = STATE.exchangeRate;
+        rateInput.onchange = (e) => {
+            const val = Number(e.target.value);
+            if (val > 0) {
+                STATE.exchangeRate = val;
+                renderDashboard();
+                showToast(`환율이 ${val}원으로 설정되었습니다`);
+            }
+        };
+    }
+    if (rateBtn) rateBtn.onclick = fetchExchangeRate;
 
     // Detail List
     const btnDateGo = document.getElementById('btn-date-go');
@@ -383,14 +412,17 @@ function setupEvents() {
         exitManagementMode();
     };
 
-    // Clicking FAB or Outside should ideally close, but FAB can just open form
     dom.btnFabRegister.onclick = () => {
         exitManagementMode();
         openForm();
     };
 }
 
-function getManagementOrder() {
+// ENTRY POINT
+async function init() {
+    showLoading();
+    fetchExchangeRate(); // Get Rate Immediately
+
     return STATE.orders.find(o => o.order_id === STATE.managementTargetId);
 }
 
@@ -405,6 +437,8 @@ async function attemptAuth() {
 
 async function loadData() {
     showLoading();
+    // Refresh Exchange Rate on manual load
+    fetchExchangeRate();
     try {
         const res = await fetch(CONFIG.API_URL + '?t=' + Date.now(), {
             method: 'POST',
@@ -436,6 +470,7 @@ async function sendBatchUpdate(updates) {
 // ================= RENDERING =================
 function navigate(targetId) {
     STATE.selectedTab = targetId;
+    STATE.pagination.currentPage = 1; // Reset pagination on tab switch
     dom.sections.forEach(s => s.classList.remove('active'));
     document.getElementById(targetId).classList.add('active');
 
@@ -510,6 +545,50 @@ function renderDashboard() {
     // Toggle Label Update
     const label = document.getElementById('label-curr-mode');
     if (label) label.textContent = STATE.currencyMode;
+
+    // Render Profit Breakdown List
+    const profitContainer = document.getElementById('dashboard-profit-list');
+    profitContainer.innerHTML = ''; // Clear
+
+    filteredOrders.forEach(o => {
+        if (o.status === 'Settled') {
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.style.marginBottom = '10px';
+            el.style.borderLeft = '4px solid #10b981'; // Green accent for profit
+
+            const p = Number(o.price_hkd) || 0;
+            const c = Number(o.cost_krw) || 0;
+            const s_hkd = Number(o.ship_fee_krw) || 0;
+            const l_hkd = Number(o.local_fee_hkd) || 0;
+            const rate = STATE.exchangeRate;
+
+            // Individual Calc
+            let profitVal = 0;
+            if (STATE.currencyMode === 'KRW') {
+                const income_krw = p * rate;
+                const expense_krw = c + (s_hkd * rate) + (l_hkd * rate);
+                profitVal = income_krw - expense_krw;
+            } else {
+                const cost_hkd = c / rate;
+                profitVal = p - cost_hkd - s_hkd - l_hkd;
+            }
+
+            el.innerHTML = `
+                <div style="display:flex; justify-content:space-between; font-weight:600; font-size:14px; margin-bottom:4px;">
+                    <span>${o.product_name}</span>
+                    <span style="color:${profitVal > 0 ? '#10b981' : '#ef4444'}">${Math.round(profitVal).toLocaleString()} ${STATE.currencyMode}</span>
+                </div>
+                <div style="font-size:11px; color:#64748b; display:flex; flex-direction:column; gap:2px;">
+                    <div>매출: HKD ${p.toLocaleString()}</div>
+                    <div>비용: KRW ${c.toLocaleString()} + 배송비</div>
+                    <div>(환율 적용: ${rate})</div>
+                </div>
+            `;
+            profitContainer.appendChild(el);
+        }
+    });
+
 }
 
 function toggleCurrencyMode() {
@@ -651,7 +730,13 @@ function renderPurchaseList() {
     const items = STATE.orders.filter(o => o.status === 'Pending');
     updateGlobalAction('purchase', STATE.selectedBatchIds.size);
 
-    items.forEach(o => {
+    // Pagination
+    const totalItems = items.length;
+    const { currentPage, itemsPerPage } = STATE.pagination;
+    const start = (currentPage - 1) * itemsPerPage;
+    const displayItems = items.slice(start, start + itemsPerPage);
+
+    displayItems.forEach(o => {
         const isSelected = STATE.selectedBatchIds.has(o.order_id);
         const toggle = () => {
             if (STATE.selectedBatchIds.has(o.order_id)) STATE.selectedBatchIds.delete(o.order_id);
@@ -672,14 +757,22 @@ function renderPurchaseList() {
         card.prepend(chk);
         dom.lists.purchase.appendChild(card);
     });
+
+    renderPaginationControls(dom.lists.purchase, totalItems, renderPurchaseList);
 }
 
 function renderKoreaList() {
     dom.lists.korea.innerHTML = '';
     const items = STATE.orders.filter(o => o.status === 'Ordered');
-    updateGlobalAction('korea', items.length); // Reuse logic
+    updateGlobalAction('korea', STATE.selectedKoreaIds.size);
 
-    items.forEach(o => {
+    // Pagination
+    const totalItems = items.length;
+    const { currentPage, itemsPerPage } = STATE.pagination;
+    const start = (currentPage - 1) * itemsPerPage;
+    const displayItems = items.slice(start, start + itemsPerPage);
+
+    displayItems.forEach(o => {
         const card = createCard(o, () => openKoreaModal(o));
         const isSelected = STATE.selectedKoreaIds.has(o.order_id);
         if (isSelected) card.classList.add('selected-glow');
@@ -702,11 +795,17 @@ function renderKoreaList() {
         card.prepend(chk);
         dom.lists.korea.appendChild(card);
     });
+
+    renderPaginationControls(dom.lists.korea, totalItems, renderKoreaList);
 }
 
 function renderHongKongList() {
     dom.lists.hk.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
+    const search = document.getElementById('inp-search-hk').value.toLowerCase();
+    const items = STATE.orders.filter(o =>
+        o.status === 'Shipped_to_HK' &&
+        o.customer_id.toLowerCase().includes(search)
+    );
     updateGlobalAction('hk', STATE.selectedHkIds.size);
 
     // Group by Customer
@@ -716,11 +815,20 @@ function renderHongKongList() {
         grouped[o.customer_id].push(o);
     });
 
-    Object.keys(grouped).forEach(customerId => {
+    const customerIds = Object.keys(grouped);
+    // Pagination for Groups
+    const totalItems = customerIds.length;
+    const { currentPage, itemsPerPage } = STATE.pagination;
+    const start = (currentPage - 1) * itemsPerPage;
+    const displayIds = customerIds.slice(start, start + itemsPerPage);
+
+    displayIds.forEach(customerId => {
         const group = grouped[customerId];
         const card = createCustomerGroupCard(customerId, group);
         dom.lists.hk.appendChild(card);
     });
+
+    renderPaginationControls(dom.lists.hk, totalItems, renderHongKongList);
 }
 
 function createCustomerGroupCard(customerId, group) {
@@ -1421,6 +1529,47 @@ function setCurrency(c) {
     dom.btnCurrKrw.classList.toggle('active', c === 'KRW');
     dom.btnCurrHkd.classList.toggle('active', c === 'HKD');
     renderDashboard();
+}
+
+renderDashboard();
+
+
+async function fetchExchangeRate() {
+    try {
+        const res = await fetch(CONFIG.EXCHANGE_API);
+        const data = await res.json();
+        if (data && data.rates && data.rates.KRW) {
+            STATE.exchangeRate = data.rates.KRW;
+            const input = document.getElementById('inp-exchange-rate');
+            if (input) input.value = STATE.exchangeRate;
+            renderDashboard();
+            console.log("Updated Exchange Rate:", STATE.exchangeRate);
+        }
+    } catch (e) {
+        console.error("Failed to fetch rate", e);
+        // Fallback already in CONFIG
+    }
+}
+
+renderDashboard();
+
+
+async function fetchExchangeRate() {
+    try {
+        console.log("Fetching Exchange Rate from:", CONFIG.EXCHANGE_API);
+        const res = await fetch(CONFIG.EXCHANGE_API);
+        const data = await res.json();
+        if (data && data.rates && data.rates.KRW) {
+            STATE.exchangeRate = data.rates.KRW;
+            const input = document.getElementById('inp-exchange-rate');
+            if (input) input.value = STATE.exchangeRate.toFixed(2);
+            renderDashboard();
+            console.log("Updated Exchange Rate:", STATE.exchangeRate);
+            showToast(`실시간 환율 적용: ${STATE.exchangeRate.toFixed(2)}원`);
+        }
+    } catch (e) {
+        console.error("Failed to fetch rate", e);
+    }
 }
 
 // UTILS
