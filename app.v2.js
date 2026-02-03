@@ -330,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEvents() {
+    console.log('[DEBUG] setupEvents() Started');
     // Helper to safely add event with debug
     const safeListen = (el, event, handler, name) => {
         if (el) {
@@ -347,10 +348,7 @@ function setupEvents() {
 
     // Explicit Debug Binding for Save Button
     if (dom.btnSaveSettle) {
-        console.log('[SetupEvents] Binding btnSaveSettle explicitly.');
         dom.btnSaveSettle.onclick = function (e) {
-            console.log('[DEBUG] btnSaveSettle Clicked (onclick)');
-            // alert('Debug: Settlement Button Clicked!'); // Uncomment if console is hard to check
             saveBulkSettlement();
         };
     } else {
@@ -422,8 +420,24 @@ function setupEvents() {
         });
     }
 
+    // Form Interactions (Restored)
+    if (dom.form) {
+        if (dom.form.btnSave) {
+            dom.form.btnSave.onclick = () => { console.log('[DEBUG] btnSave (Order) Clicked'); saveOrder(); };
+        } else { console.error('[SetupEvents] dom.form.btnSave is missing'); }
+
+        safeListen(dom.form.btnAdd, 'click', () => addProductRow(), 'form.btnAdd');
+        if (dom.form.customer) dom.form.customer.addEventListener('change', autoFillAddress);
+        if (dom.form.btnClose) {
+            safeListen(dom.form.btnClose, 'click', () => navigate('view-list'), 'form.btnClose');
+        }
+    }
+
     // Modal Actions - Purchase
-    safeListen(dom.btnSaveCost, 'click', savePurchaseCost, 'btnSaveCost');
+    if (dom.btnSaveCost) {
+        dom.btnSaveCost.onclick = () => { console.log('[DEBUG] btnSaveCost Clicked'); savePurchaseCost(); };
+    } else { console.error('[SetupEvents] dom.btnSaveCost is missing'); }
+
     safeListen(dom.btnCloseModal, 'click', closePurchaseModal, 'btnCloseModal');
     safeListen(dom.btnBulkCost, 'click', handleBulkActionClick, 'btnBulkCost');
 
@@ -433,11 +447,17 @@ function setupEvents() {
 
     // Modal Actions - Korea
     safeListen(document.getElementById('btn-close-korea-modal'), 'click', () => dom.modals.korea.style.display = 'none', 'btnCloseKoreaModal');
-    safeListen(dom.btnSaveKorea, 'click', saveKoreaShipping, 'btnSaveKorea');
+
+    if (dom.btnSaveKorea) {
+        dom.btnSaveKorea.onclick = () => { console.log('[DEBUG] btnSaveKorea Clicked'); saveKoreaShipping(); };
+    } else { console.error('[SetupEvents] dom.btnSaveKorea is missing'); }
 
     // Modal Actions - HK
     safeListen(document.getElementById('btn-close-hk-modal'), 'click', () => dom.modals.hk.style.display = 'none', 'btnCloseHkModal');
-    safeListen(dom.btnSaveHk, 'click', saveHongKongDelivery, 'btnSaveHk');
+
+    if (dom.btnSaveHk) {
+        dom.btnSaveHk.onclick = () => { console.log('[DEBUG] btnSaveHk Clicked'); saveHongKongDelivery(); };
+    } else { console.error('[SetupEvents] dom.btnSaveHk is missing'); }
 
     // Modal Actions - Settlement
     safeListen(document.getElementById('btn-close-settle-modal'), 'click', () => dom.modals.settlement.style.display = 'none', 'btnCloseSettleModal');
@@ -1617,7 +1637,6 @@ async function saveHongKongDelivery() {
 
 // --- BULK SETTLEMENT ---
 async function openSettlementModal() {
-    console.log('[DEBUG] openSettlementModal called');
     if (!dom.modals.settlement) {
         alert('Critical Error: Settlement Modal Element Missing!');
         return;
@@ -1707,11 +1726,9 @@ async function saveBulkSettlement() {
         console.log('[Settlement] Final Updates Payload:', updates);
 
         if (updates.length > 0) {
-            alert(`[DEBUG] 서버로 데이터 전송 시작 (${updates.length}건)...\n(Sending data to server...)`);
             await sendBatchUpdate(updates);
 
-            console.log('[Settlement] Server Response Success');
-            alert(`[정산 결과]\n완료(Settled): ${settledCount}건\n부분정산(Partial): ${partialCount}건\n\n서버 전송 성공!`);
+            alert(`[정산 결과]\n완료(Settled): ${settledCount}건\n부분정산(Partial): ${partialCount}건`);
 
             STATE.selectedFinanceIds.clear();
             if (dom.modals.settlement) {
