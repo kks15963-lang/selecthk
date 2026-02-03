@@ -267,11 +267,15 @@ const dom = {
     btnCloseList: document.getElementById('btn-close-list'),
 
     // Modal Inputs
-    modalInpKrw: document.getElementById('inp-cost-krw'),
+    modalInpKrw: document.getElementById('modal-inp-krw'),
+    modalInpKrw: document.getElementById('modal-inp-krw'),
     purchaseItemName: document.getElementById('purchase-item-name'),
+    btnCloseModal: document.getElementById('btn-close-modal'), // Added
+    btnSaveCost: document.getElementById('btn-save-cost'), // Added
 
     koreaModalDesc: document.getElementById('korea-modal-desc'),
     inpShipTotal: document.getElementById('inp-ship-total'),
+    btnSaveKorea: document.getElementById('btn-save-korea'), // Added
 
     hkModalDesc: document.getElementById('hk-modal-desc'),
     selDeliveryMethod: document.getElementById('sel-delivery-method'),
@@ -279,7 +283,7 @@ const dom = {
     inpTracking: document.getElementById('inp-tracking'),
     inpLocalFee: document.getElementById('inp-local-fee'),
 
-    btnCancelHk: document.getElementById('btn-cancel-hk'),
+    // btnCancelHk: document.getElementById('btn-cancel-hk'), // Removed
     btnSaveHk: document.getElementById('btn-save-hk'),
 
     // Settlement Modal
@@ -289,10 +293,8 @@ const dom = {
     btnSaveSettle: document.getElementById('btn-save-settle'),
     menu: document.getElementById('menu'), // Just in case
 
-    // Select All Checkboxes
-    cbAllPurchase: document.getElementById('cb-all-purchase'),
-    cbAllKorea: document.getElementById('cb-all-korea'),
-    cbAllFinance: document.getElementById('cb-all-finance'),
+    // Select All Checkboxes (Consolidated)
+    // cbAllPurchase & cbAllKorea defined above
     btnSettleSelected: document.getElementById('btn-settle-selected'),
 
     // Order Form
@@ -307,7 +309,7 @@ const dom = {
         btnAdd: document.getElementById('btn-add-product'),
         btnAdd: document.getElementById('btn-add-product'),
         btnSave: document.getElementById('btn-save'),
-        btnCancel: document.getElementById('btn-cancel'),
+        // btnCancel: document.getElementById('btn-cancel'), // Removed
         btnClose: document.getElementById('btn-close-form') // New Close Button
     },
     datalists: {
@@ -328,48 +330,65 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEvents() {
-    // Helper to safely add event
-    const safeListen = (el, event, handler) => {
-        if (el) el.addEventListener(event, handler);
+    // Helper to safely add event with debug
+    const safeListen = (el, event, handler, name) => {
+        if (el) {
+            el.addEventListener(event, handler);
+        } else {
+            console.error(`[SetupEvents] Failed to bind '${event}' to missing element: ${name || 'unknown'}`);
+        }
     };
 
+    // Settlement Debug Check
+    if (!dom.btnSaveSettle) console.error('[CRITICAL] btnSaveSettle is NULL.');
+
+    // Modal Actions - Settlement
+    safeListen(dom.btnCancelSettle, 'click', () => dom.modals.settlement.style.display = 'none', 'btnCancelSettle');
+
+    // Explicit Debug Binding for Save Button
+    if (dom.btnSaveSettle) {
+        console.log('[SetupEvents] Binding btnSaveSettle explicitly.');
+        dom.btnSaveSettle.onclick = function (e) {
+            console.log('[DEBUG] btnSaveSettle Clicked (onclick)');
+            // alert('Debug: Settlement Button Clicked!'); // Uncomment if console is hard to check
+            saveBulkSettlement();
+        };
+    } else {
+        console.error('[SetupEvents] btnSaveSettle NOT FOUND during bind.');
+    }
+
     // Auth
-    safeListen(dom.btnAuthConfirm, 'click', attemptAuth);
+    safeListen(dom.btnAuthConfirm, 'click', attemptAuth, 'btnAuthConfirm');
     if (dom.authCode) {
         dom.authCode.addEventListener('keyup', (e) => { if (e.key === 'Enter') attemptAuth(); });
     }
 
     // Global
-    safeListen(dom.btnRefresh, 'click', loadData);
-    safeListen(dom.btnLang, 'click', toggleLanguage);
-    safeListen(dom.btnCurrency, 'click', toggleCurrencyMode);
+    safeListen(dom.btnRefresh, 'click', loadData, 'btnRefresh');
+    safeListen(dom.btnLang, 'click', toggleLanguage, 'btnLang');
+    safeListen(dom.btnCurrency, 'click', toggleCurrencyMode, 'btnCurrency');
 
     // Navigation
-    dom.navItems.forEach(btn => {
-        const target = btn.dataset.target;
-        if (target === 'view-list') { // Assuming 'view-list' is the general order list
-            safeListen(btn, 'click', () => navigate('view-list'));
-        } else {
-            safeListen(btn, 'click', () => navigate(target));
-        }
+    dom.navItems.forEach((btn, idx) => {
+        safeListen(btn, 'click', () => navigate(btn.dataset.target), `navItem-${idx}`);
     });
-    dom.pipelineSteps.forEach(step =>
-        safeListen(step, 'click', () => navigate(step.dataset.target))
+    dom.pipelineSteps.forEach((step, idx) =>
+        safeListen(step, 'click', () => navigate(step.dataset.target), `pipelineStep-${idx}`)
     );
-    safeListen(dom.fab, 'click', () => openForm());
+    safeListen(dom.fab, 'click', () => openForm(), 'fab');
 
     // List Search & Filters
-    safeListen(dom.searchInput, 'input', () => renderList(dom.searchInput.value));
-    safeListen(dom.filterStatus, 'change', () => renderList(dom.searchInput.value));
-    safeListen(dom.filterProduct, 'input', () => renderList(dom.searchInput.value)); // Product Filter
-    safeListen(dom.filterDateStart, 'change', () => renderList(dom.searchInput.value));
-    safeListen(dom.filterDateEnd, 'change', () => renderList(dom.searchInput.value));
+    safeListen(dom.searchInput, 'input', () => renderList(dom.searchInput.value), 'searchInput');
+    safeListen(dom.filterStatus, 'change', () => renderList(dom.searchInput.value), 'filterStatus');
+    safeListen(dom.filterProduct, 'input', () => renderList(dom.searchInput.value), 'filterProduct');
+    safeListen(dom.filterDateStart, 'change', () => renderList(dom.searchInput.value), 'filterDateStart');
+    safeListen(dom.filterDateEnd, 'change', () => renderList(dom.searchInput.value), 'filterDateEnd');
 
     // Filter Shortcuts
-    safeListen(dom.btnFilterToday, 'click', () => setDateFilter('today'));
-    safeListen(dom.btnFilterMonth, 'click', () => setDateFilter('month'));
-    safeListen(dom.btnFilterReset, 'click', () => setDateFilter('reset')); // Fixed: dom.inpSearch -> dom.searchInput
-    safeListen(dom.inpSearchHk, 'input', (e) => renderHongKongList(e.target.value));
+    safeListen(dom.btnFilterToday, 'click', () => setDateFilter('today'), 'btnFilterToday');
+    safeListen(dom.btnFilterMonth, 'click', () => setDateFilter('month'), 'btnFilterMonth');
+    safeListen(dom.btnFilterReset, 'click', () => setDateFilter('reset'), 'btnFilterReset');
+    safeListen(dom.inpSearchHk, 'input', (e) => renderHongKongList(e.target.value), 'inpSearchHk');
 
     // Dashboard
     if (dom.dashboardDateFilter) {
@@ -392,7 +411,7 @@ function setupEvents() {
 
 
     // Dashboard Interaction
-    safeListen(dom.cardProfit, 'click', toggleProfitMode);
+    safeListen(dom.cardProfit, 'click', toggleProfitMode, 'cardProfit');
 
     // Finance Rate
     if (dom.inpExRate) {
@@ -403,43 +422,25 @@ function setupEvents() {
         });
     }
 
-    // Close Form Button
-    if (dom.form.btnClose) {
-        dom.form.btnClose.onclick = () => {
-            // Confirm if unsaved? (Optional)
-            navigate('view-list');
-        };
-    }
-
-    // Form Interactions
-    if (dom.form) {
-        safeListen(dom.form.btnCancel, 'click', () => navigate('view-dashboard'));
-        safeListen(dom.form.btnSave, 'click', saveOrder);
-        safeListen(dom.form.btnAdd, 'click', () => addProductRow());
-        if (dom.form.customer) dom.form.customer.addEventListener('change', autoFillAddress);
-    }
-
     // Modal Actions - Purchase
-    safeListen(dom.btnSaveCost, 'click', savePurchaseCost);
-    safeListen(dom.btnCloseModal, 'click', closePurchaseModal);
-    safeListen(dom.btnBulkCost, 'click', handleBulkActionClick);
+    safeListen(dom.btnSaveCost, 'click', savePurchaseCost, 'btnSaveCost');
+    safeListen(dom.btnCloseModal, 'click', closePurchaseModal, 'btnCloseModal');
+    safeListen(dom.btnBulkCost, 'click', handleBulkActionClick, 'btnBulkCost');
 
     // Select All
-    safeListen(dom.cbAllPurchase, 'change', (e) => toggleSelectAll('purchase', e.target.checked));
-    safeListen(dom.cbAllKorea, 'change', (e) => toggleSelectAll('korea', e.target.checked));
-    safeListen(dom.cbAllFinance, 'change', (e) => toggleSelectAll('finance', e.target.checked));
+    safeListen(dom.cbAllPurchase, 'change', (e) => toggleSelectAll('purchase', e.target.checked), 'cbAllPurchase');
+    safeListen(dom.cbAllKorea, 'change', (e) => toggleSelectAll('korea', e.target.checked), 'cbAllKorea');
 
     // Modal Actions - Korea
-    safeListen(dom.btnCancelKorea, 'click', () => dom.modals.korea.style.display = 'none');
-    safeListen(dom.btnSaveKorea, 'click', saveKoreaShipping);
+    safeListen(document.getElementById('btn-close-korea-modal'), 'click', () => dom.modals.korea.style.display = 'none', 'btnCloseKoreaModal');
+    safeListen(dom.btnSaveKorea, 'click', saveKoreaShipping, 'btnSaveKorea');
 
     // Modal Actions - HK
-    safeListen(dom.btnCancelHk, 'click', () => dom.modals.hk.style.display = 'none');
-    safeListen(dom.btnSaveHk, 'click', saveHongKongDelivery);
+    safeListen(document.getElementById('btn-close-hk-modal'), 'click', () => dom.modals.hk.style.display = 'none', 'btnCloseHkModal');
+    safeListen(dom.btnSaveHk, 'click', saveHongKongDelivery, 'btnSaveHk');
 
     // Modal Actions - Settlement
-    safeListen(dom.btnCancelSettle, 'click', () => dom.modals.settlement.style.display = 'none');
-    safeListen(dom.btnSaveSettle, 'click', saveBulkSettlement);
+    safeListen(document.getElementById('btn-close-settle-modal'), 'click', () => dom.modals.settlement.style.display = 'none', 'btnCloseSettleModal');
 
     // List Modal
     // Safely assign onclick
@@ -974,8 +975,6 @@ function updateHeaderCheckbox(type, isChecked) {
         if (dom.cbAllPurchase) dom.cbAllPurchase.checked = isChecked;
     } else if (type === 'korea') {
         if (dom.cbAllKorea) dom.cbAllKorea.checked = isChecked;
-    } else if (type === 'finance') {
-        if (dom.cbAllFinance) dom.cbAllFinance.checked = isChecked;
     }
 }
 
@@ -1158,7 +1157,11 @@ function renderFinanceList() {
     btnSettle.className = 'btn-primary';
     btnSettle.style.display = 'none'; // Hidden by default
     btnSettle.style.marginBottom = '10px';
-    btnSettle.onclick = openSettlementModal;
+    btnSettle.onclick = () => {
+        console.log('[DEBUG] Dynamic Batch Settle Button Clicked');
+        // alert('Debug: Dynamic Button Clicked'); 
+        openSettlementModal();
+    };
     dom.lists.finance.appendChild(btnSettle);
 
     // Update Button State Helper
@@ -1613,16 +1616,26 @@ async function saveHongKongDelivery() {
 }
 
 // --- BULK SETTLEMENT ---
-// --- BULK SETTLEMENT ---
-function openSettlementModal() {
+async function openSettlementModal() {
+    console.log('[DEBUG] openSettlementModal called');
+    if (!dom.modals.settlement) {
+        alert('Critical Error: Settlement Modal Element Missing!');
+        return;
+    }
     dom.settlementDesc.textContent = `${STATE.selectedFinanceIds.size}건 정산`;
     dom.inpSettleTotal.value = '';
+
+    // Fix: Remove 'hidden' class which has !important
+    dom.modals.settlement.classList.remove('hidden');
     dom.modals.settlement.style.display = 'flex';
+
     dom.inpSettleTotal.focus();
 }
 
 async function saveBulkSettlement() {
     const totalAvailable = parseInt(dom.inpSettleTotal.value);
+    console.log('[Settlement] Start. Total Available:', totalAvailable);
+
     if (!totalAvailable || totalAvailable <= 0) return alert('정산 금액을 입력해주세요.');
 
     if (!confirm(`총 ${totalAvailable.toLocaleString()} KRW로 정산을 진행하시겠습니까?`)) return;
@@ -1635,10 +1648,18 @@ async function saveBulkSettlement() {
 
         // items to process
         const items = STATE.orders.filter(o => STATE.selectedFinanceIds.has(o.order_id));
+        console.log('[Settlement] Selected Items:', items.length, items);
 
-        // Sort items? Maybe by Date (FIFO)? Or just arbitrary?
-        // Let's sort by date asc to settle oldest first
+        if (items.length === 0) {
+            alert('선택된 항목이 없습니다. (No items selected)');
+            return;
+        }
+
+        // Sort items by date asc to settle oldest first
         items.sort((a, b) => a.order_date.localeCompare(b.order_date));
+
+        let settledCount = 0;
+        let partialCount = 0;
 
         for (const o of items) {
             if (remaining <= 0) break;
@@ -1648,18 +1669,12 @@ async function saveBulkSettlement() {
             const local = (Number(o.local_fee_hkd) || 0) * rate;
             const profit = Math.round(rev - cost - local);
 
-            // Settle Need = Profit (Assuming we are settling Profit)
-            // If Profit is negative, it's a loss, we should "Settle" it (acknowledge it)?
-            // If Profit is 0 or negative, assume it requires 0 to settle? 
-            // Or maybe user wants to cover costs?
-            // "Settlement" usually means withdrawing profit.
-            // Let's assume we settle positive profit.
+            console.log(`[Settlement] Processing ${o.order_id}: Profit=${profit}, Remaining=${remaining}. (Rev=${rev}, Cost=${cost}, Local=${local})`);
 
             // Logic: Pay out 'Profit'.
             if (profit <= 0) {
-                // Auto settle items with no profit? Or skip? 
-                // Let's mark them settled as they don't consume 'Total Available'.
-                updates.push({ order_id: o.order_id, status: 'Settled' });
+                updates.push({ order_id: o.order_id, status: 'Settled', remarks: (o.remarks || '') + ' [Settled: No Profit]' });
+                settledCount++;
                 continue;
             }
 
@@ -1668,10 +1683,10 @@ async function saveBulkSettlement() {
                 updates.push({
                     order_id: o.order_id,
                     status: 'Settled',
-                    // Add debug remark?
                     remarks: (o.remarks || '') + ' [Settled]'
                 });
                 remaining -= profit;
+                settledCount++;
             }
             // 2. Partial Settle
             else {
@@ -1685,26 +1700,34 @@ async function saveBulkSettlement() {
                     // Status remains 'Completed' (Not Settled)
                     remarks: (o.remarks || '') + ` [Partial: ${paidAmount}]`
                 });
+                partialCount++;
             }
         }
 
-        console.log('Sending Batch Updates:', updates);
-        // alert(`DEBUG: Sending ${updates.length} items to server...`); // Optional debug
+        console.log('[Settlement] Final Updates Payload:', updates);
 
         if (updates.length > 0) {
+            alert(`[DEBUG] 서버로 데이터 전송 시작 (${updates.length}건)...\n(Sending data to server...)`);
             await sendBatchUpdate(updates);
 
-            // Clear selection
-            STATE.selectedFinanceIds.clear();
+            console.log('[Settlement] Server Response Success');
+            alert(`[정산 결과]\n완료(Settled): ${settledCount}건\n부분정산(Partial): ${partialCount}건\n\n서버 전송 성공!`);
 
-            dom.modals.settlement.style.display = 'none';
+            STATE.selectedFinanceIds.clear();
+            if (dom.modals.settlement) {
+                dom.modals.settlement.style.display = 'none';
+            }
+
             loadData();
-            showToast(`${updates.length}건 정산 완료 처리되었습니다.`);
+            showToast(`${updates.length}건 처리가 완료되었습니다.`);
         } else {
-            alert('처리할 항목이 없습니다.');
+            alert('처리할 항목이 없습니다. (Updates list is empty)');
         }
 
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+        console.error('[Settlement] Error:', e);
+        alert('Error during Settlement:\n' + e.message);
+    }
     finally { hideLoading(); }
 }
 
