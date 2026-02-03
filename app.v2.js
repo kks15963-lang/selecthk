@@ -305,7 +305,19 @@ function setupEvents() {
             dom.receipt.paper.classList.add('saving');
             rcptTimer = setTimeout(() => {
                 if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-                alert("🖼️ 영수증이 이미지로 저장되었습니다.\n(갤러리를 확인하세요)");
+
+                // Real Image Save with html2canvas
+                html2canvas(dom.receipt.paper, { scale: 2, useCORS: true }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `Receipt_${new Date().toISOString().slice(0, 10)}.png`;
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                    alert("🖼️ 영수증이 저장되었습니다!");
+                }).catch(err => {
+                    console.error(err);
+                    alert("저장 실패: " + err.message);
+                });
+
                 dom.receipt.paper.classList.remove('saving');
             }, 800);
         };
