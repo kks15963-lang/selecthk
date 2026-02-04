@@ -72,11 +72,11 @@
                 </div>
                 <div style="display:flex; justify-content:space-between;">
                     <div class="preset-group">
-                        <button id="btn-dash-today" class="btn-xs">오늘</button>
-                        <button id="btn-dash-week" class="btn-xs">이번주</button>
-                        <button id="btn-dash-month" class="btn-xs">이번달</button>
+                        <button id="btn-dash-today" class="btn-xs" data-i18n="lbl_today">오늘</button>
+                        <button id="btn-dash-week" class="btn-xs" data-i18n="lbl_week">이번주</button>
+                        <button id="btn-dash-month" class="btn-xs" data-i18n="lbl_month">이번달</button>
                     </div>
-                    <button id="btn-dash-reset" class="btn-xs">전체</button>
+                    <button id="btn-dash-reset" class="btn-xs" data-i18n="lbl_reset">전체</button>
                 </div>
             </div>
 
@@ -115,19 +115,19 @@
             <div id="filter-container" class="filter-container">
                 <div class="filter-row">
                     <input type="search" id="filter-customer" class="form-input" placeholder="고객명 (Customer)"
-                        style="flex:1;">
+                        data-i18n-ph="ph_customer" style="flex:1;">
                     <input type="search" id="filter-product" class="form-input" placeholder="상품명 (Product)"
-                        style="flex:1;">
+                        data-i18n-ph="ph_product" style="flex:1;">
                 </div>
                 <div class="filter-row">
                     <select id="filter-status" class="form-input" style="flex:1;">
-                        <option value="All">전체 상태 (All Status)</option>
-                        <option value="Pending">매입필요</option>
-                        <option value="Ordered">발송대기</option>
-                        <option value="Shipped_to_HK">배송대기</option>
-                        <option value="Completed">정산대기</option>
-                        <option value="Settled">정산완료</option>
-                        <option value="Cancelled">주문취소</option>
+                        <option value="All" data-i18n="lbl_status_all">전체 상태 (All Status)</option>
+                        <option value="Pending" data-i18n="status_pending">매입필요</option>
+                        <option value="Ordered" data-i18n="status_ordered">발송대기</option>
+                        <option value="Shipped_to_HK" data-i18n="status_shipped_to_hk">배송대기</option>
+                        <option value="Completed" data-i18n="status_completed">정산대기</option>
+                        <option value="Settled" data-i18n="status_settled">정산완료</option>
+                        <option value="Cancelled" data-i18n="status_cancelled">주문취소</option>
                     </select>
                 </div>
                 <div class="filter-row">
@@ -137,12 +137,12 @@
                 </div>
                 <div class="filter-actions">
                     <div class="preset-group">
-                        <button id="btn-period-today" class="btn-xs">오늘</button>
-                        <button id="btn-period-week" class="btn-xs">1주일</button>
-                        <button id="btn-period-month" class="btn-xs">1개월</button>
+                        <button id="btn-period-today" class="btn-xs" data-i18n="lbl_today">오늘</button>
+                        <button id="btn-period-week" class="btn-xs" data-i18n="lbl_week">1주일</button>
+                        <button id="btn-period-month" class="btn-xs" data-i18n="lbl_month">1개월</button>
                     </div>
                     <button id="btn-filter-reset" class="btn-xs"
-                        style="color:var(--danger); border-color:var(--danger);">
+                        style="color:var(--danger); border-color:var(--danger);" data-i18n="lbl_reset">
                         🔄 초기화
                     </button>
                 </div>
@@ -245,23 +245,25 @@
 
             <input type="hidden" id="inp-order-id">
             <div class="form-group">
-                <label class="form-label">날짜</label>
+                <label class="form-label" data-i18n="lbl_date">날짜</label>
                 <input type="date" id="inp-date" class="form-input">
             </div>
             <div class="form-group">
-                <label class="form-label">고객명 <span style="color:var(--danger)">*</span></label>
-                <input type="text" id="inp-customer" class="form-input" list="dl-customers" placeholder="Name">
+                <label class="form-label"><span data-i18n="lbl_customer">고객명</span> <span
+                        style="color:var(--danger)">*</span></label>
+                <input type="text" id="inp-customer" class="form-input" list="dl-customers" placeholder="Name"
+                    data-i18n-ph="ph_customer">
                 <datalist id="dl-customers"></datalist>
             </div>
             <div class="form-group">
-                <label class="form-label">주소</label>
+                <label class="form-label" data-i18n="lbl_address">주소</label>
                 <input type="text" id="inp-address" class="form-input" placeholder="Address">
             </div>
 
             <div id="product-rows-container"></div>
 
             <div class="form-group" style="margin-top:20px;">
-                <label class="form-label">비고</label>
+                <label class="form-label" data-i18n="lbl_remarks">비고</label>
                 <textarea id="inp-remarks" class="form-textarea" rows="2"></textarea>
             </div>
 
@@ -269,7 +271,7 @@
 
             <div class="fixed-bottom-action">
                 <div class="sub-actions">
-                    <button id="btn-close-form" class="btn-link">작성 취소하고 돌아가기</button>
+                    <button id="btn-close-form" class="btn-link" data-i18n="btn_close">작성 취소하고 돌아가기</button>
                 </div>
                 <button id="btn-save-order" class="btn-primary-large" data-i18n="btn_save">주문 정보 저장 완료</button>
             </div>
@@ -318,30 +320,32 @@
             <h3 data-i18n="lbl_krw">매입가 입력</h3>
             <p id="purchase-item-name" class="modal-desc"></p>
             <input type="number" id="modal-inp-krw" class="form-input-large" placeholder="KRW 0" data-i18n="ph_cost">
-            <button id="btn-save-cost" class="btn-primary-large" style="margin-top:20px;">매입가 저장하고 완료하기</button>
+            <button id="btn-save-cost" class="btn-primary-large" style="margin-top:20px;" data-i18n="btn_save_cost">매입가
+                저장하고 완료하기</button>
         </div>
     </div>
 
     <!-- Korea Modal -->
     <div id="korea-modal" class="modal hidden">
         <div class="modal-content-bottom">
-            <h3 data-i18n="sec_korea">배대지 비용 입력</h3>
+            <h3 data-i18n="lbl_ship_fee">배대지 비용 입력</h3>
             <p id="korea-modal-desc" class="modal-desc"></p>
             <input type="number" id="inp-ship-total" class="form-input-large" placeholder="Total Ship Fee (HKD)">
-            <button id="btn-save-korea" class="btn-primary-large" style="margin-top:20px;">배송비 저장하고 발송 처리하기</button>
+            <button id="btn-save-korea" class="btn-primary-large" style="margin-top:20px;" data-i18n="btn_ship_save">배송비
+                저장하고 발송 처리하기</button>
         </div>
     </div>
 
     <!-- HK Modal -->
     <div id="hk-modal" class="modal hidden">
         <div class="modal-content-bottom">
-            <h3 data-i18n="sec_hongkong">배송 완료 처리</h3>
+            <h3 data-i18n="lbl_hk_ship">배송 완료 처리</h3>
             <div id="hk-customer-info" style="border-bottom:1px solid #eee; padding-bottom:10px;"></div>
             <div id="hk-item-list"
                 style="max-height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px;"></div>
 
             <div id="hk-input-container" class="hidden">
-                <label class="form-label">배송 주소</label>
+                <label class="form-label" data-i18n="lbl_address">배송 주소</label>
                 <input type="text" id="inp-hk-address" class="form-input" placeholder="Address">
 
                 <div class="row" style="margin-top:10px;">
@@ -359,18 +363,22 @@
                     style="margin-top:10px;">
             </div>
 
-            <button id="btn-hk-next" class="btn-primary-large" style="margin-top:20px;">배송 정보 입력하기</button>
-            <button id="btn-save-hk" class="btn-primary-large hidden" style="margin-top:20px;">배송 정보 저장하기</button>
+            <button id="btn-hk-next" class="btn-primary-large" style="margin-top:20px;" data-i18n="btn_hk_next">배송 정보
+                입력하기</button>
+            <button id="btn-save-hk" class="btn-primary-large hidden" style="margin-top:20px;"
+                data-i18n="btn_hk_save">배송 정보 저장하기</button>
         </div>
     </div>
 
     <!-- Settlement Modal -->
     <div id="settlement-modal" class="modal hidden">
         <div class="modal-content-bottom">
-            <h3>수익 정산</h3>
+            <h3 data-i18n="lbl_settle">수익 정산</h3>
             <p id="settlement-desc" class="modal-desc"></p>
-            <input type="number" id="inp-settle-total" class="form-input-large" placeholder="Total Available KRW">
-            <button id="btn-save-settle" class="btn-primary-large" style="margin-top:20px;">금액 확인하고 정산 처리하기</button>
+            <input type="number" id="inp-settle-total" class="form-input-large" placeholder="Total Available KRW"
+                data-i18n-ph="ph_cost">
+            <button id="btn-save-settle" class="btn-primary-large" style="margin-top:20px;"
+                data-i18n="btn_settle_save">금액 확인하고 정산 처리하기</button>
         </div>
     </div>
 
@@ -422,13 +430,17 @@
 
     <!-- Navigation -->
     <nav class="bottom-nav">
-        <button class="nav-item active" data-target="view-dashboard"><span>📊</span><span>현황</span></button>
-        <button class="nav-item" data-target="view-list"><span>📋</span><span>주문</span></button>
-        <button class="nav-item" data-target="view-purchase"><span>🛒</span><span>매입</span></button>
-        <button class="nav-item" data-target="view-korea"><span>📦</span><span>배대지</span></button>
-        <button class="nav-item" data-target="view-hongkong"><span>🚚</span><span>배송</span></button>
-        <button class="nav-item" data-target="view-finance"><span>💰</span><span>정산</span></button>
-        <button class="nav-item" data-target="view-settings"><span>⚙️</span><span>설정</span></button>
+        <button class="nav-item active" data-target="view-dashboard"><span>📊</span><span
+                data-i18n="nav_dash">현황</span></button>
+        <button class="nav-item" data-target="view-list"><span>📋</span><span data-i18n="nav_list">주문</span></button>
+        <button class="nav-item" data-target="view-purchase"><span>🛒</span><span
+                data-i18n="nav_purchase">매입</span></button>
+        <button class="nav-item" data-target="view-korea"><span>📦</span><span data-i18n="nav_korea">배대지</span></button>
+        <button class="nav-item" data-target="view-hongkong"><span>🚚</span><span data-i18n="nav_hk">배송</span></button>
+        <button class="nav-item" data-target="view-finance"><span>💰</span><span
+                data-i18n="nav_finance">정산</span></button>
+        <button class="nav-item" data-target="view-settings"><span>⚙️</span><span
+                data-i18n="nav_settings">설정</span></button>
     </nav>
 
     <!-- Datalists -->

@@ -86,26 +86,26 @@ function addProductRow(data = null) {
 
     row.innerHTML = `
         <div style="margin-bottom:12px;">
-            <label class="form-label">상품명 <span style="color:var(--danger)">*</span></label>
+            <label class="form-label"><span data-i18n="lbl_product">${t('lbl_product')}</span> <span style="color:var(--danger)">*</span></label>
             <div class="autocomplete-wrapper">
-                <input class="form-input inp-product" placeholder="상품명 검색" value="${data ? data.product : ''}" autocomplete="off">
+                <input class="form-input inp-product" placeholder="${t('ph_product')}" value="${data ? data.product : ''}" autocomplete="off">
                 <div class="suggestion-box"></div>
             </div>
         </div>
         <div class="row">
             <div style="flex:1;">
-                <label class="form-label">수량 <span style="color:var(--danger)">*</span></label>
+                <label class="form-label"><span data-i18n="lbl_qty">${t('lbl_qty')}</span> <span style="color:var(--danger)">*</span></label>
                 <input class="form-input inp-qty" type="number" placeholder="1" value="${data ? data.qty : '1'}">
             </div>
             <div style="flex:1;">
-                <label class="form-label">단가 (HKD)</label>
+                <label class="form-label"><span data-i18n="lbl_price">${t('lbl_price')}</span></label>
                 <input class="form-input inp-price" type="number" placeholder="0" value="${data ? data.price : ''}">
             </div>
         </div>
         <div style="margin-top:12px;">
-             <label class="form-label">옵션/사이즈 <span style="color:var(--danger)">*</span></label>
+             <label class="form-label"><span data-i18n="lbl_option">${t('lbl_option')}</span> <span style="color:var(--danger)">*</span></label>
              <div class="autocomplete-wrapper">
-                 <input class="form-input inp-option" placeholder="옵션 정보" value="${data ? data.option : ''}" autocomplete="off">
+                 <input class="form-input inp-option" placeholder="${t('lbl_option')}" value="${data ? data.option : ''}" autocomplete="off">
                  <div class="suggestion-box"></div>
              </div>
         </div>
