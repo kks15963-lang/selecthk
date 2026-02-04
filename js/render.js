@@ -161,7 +161,18 @@ function renderHongKongList() {
     list.innerHTML = '';
 
     // Sort: items with address first
-    const items = STATE.orders.filter(o => o.status === 'Shipped_to_HK').sort((a, b) => {
+    let items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
+
+    if (STATE.hkQuery) {
+        const q = STATE.hkQuery;
+        items = items.filter(o =>
+            (o.customer_id && o.customer_id.toLowerCase().includes(q)) ||
+            (o.product_name && o.product_name.toLowerCase().includes(q)) ||
+            (o.order_id && o.order_id.toLowerCase().includes(q))
+        );
+    }
+
+    items.sort((a, b) => {
         const hasA = (a.address && a.address.length > 5) ? 1 : 0;
         const hasB = (b.address && b.address.length > 5) ? 1 : 0;
         return hasB - hasA;

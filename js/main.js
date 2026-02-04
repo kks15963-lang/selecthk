@@ -66,12 +66,34 @@ function setupEvents() {
     bindFilter('filter-customer', 'customer');
     bindFilter('filter-product', 'product');
     document.getElementById('filter-status').onchange = (e) => { STATE.filters.status = e.target.value; renderOrderList(); };
+
+    // Order List Date Filters
+    const bindListDate = (id, key) => {
+        const el = document.getElementById(id);
+        if (el) el.onchange = (e) => { STATE.filters[key] = e.target.value; renderOrderList(); };
+    };
+    bindListDate('filter-date-start', 'startDate');
+    bindListDate('filter-date-end', 'endDate');
+
+    document.getElementById('btn-period-today').onclick = () => setListDate(0);
+    document.getElementById('btn-period-week').onclick = () => setListDate(7);
+    document.getElementById('btn-period-month').onclick = () => setListDate(30);
+
     document.getElementById('btn-filter-reset').onclick = () => {
         STATE.filters = { customer: '', product: '', status: 'All', startDate: '', endDate: '' };
         ['filter-customer', 'filter-product', 'filter-date-start', 'filter-date-end'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('filter-status').value = 'All';
         renderOrderList();
     };
+
+    // HK Delivery Search
+    const hkSearch = document.getElementById('inp-search-hk');
+    if (hkSearch) {
+        hkSearch.oninput = (e) => {
+            STATE.hkQuery = e.target.value.toLowerCase();
+            renderHongKongList();
+        };
+    }
 
     // Bulk Buttons
     document.getElementById('btn-bulk-purchase').onclick = () => openBatchModal('purchase');
@@ -195,4 +217,14 @@ function setDashDate(days) {
     document.getElementById('dash-date-start').value = STATE.dashFilters.startDate;
     document.getElementById('dash-date-end').value = STATE.dashFilters.endDate;
     renderDashboard();
+}
+
+function setListDate(days) {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    STATE.filters.startDate = d.toISOString().split('T')[0];
+    STATE.filters.endDate = new Date().toISOString().split('T')[0];
+    document.getElementById('filter-date-start').value = STATE.filters.startDate;
+    document.getElementById('filter-date-end').value = STATE.filters.endDate;
+    renderOrderList();
 }
