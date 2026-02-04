@@ -1,0 +1,195 @@
+
+let _components_currentRow = null;
+
+function createCard(o, onClick, isSelected, disableLongPress = false, onLongPress = null) {
+    const el = document.createElement('div');
+    el.className = `card ${isSelected ? 'selected-glow' : ''}`;
+
+    const statusText = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5)
+        ? "배송정보 입력완료"
+        : (TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status);
+
+    let warning = '';
+    if (o.status === 'Shipped_to_HK' && (!o.address || o.address.length < 5)) {
+        warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">⚠️ 배송 정보/주소 필요</div>`;
+    }
+
+    el.innerHTML = `
+        <div class="card-header">
+            <span class="card-title">${o.product_name}</span>
+            <span class="badge ${o.status.toLowerCase()}">${statusText}</span>
+        </div>
+        <div class="card-subtitle" style="color:#64748b; font-size:13px;">${o.customer_id} | ${o.option} (x${o.qty})</div>
+        ${warning}
+        <div class="card-details">
+            <span>HKD ${Number(o.price_hkd).toLocaleString()}</span>
+            <span style="color:#94a3b8">${o.order_date}</span>
+        </div>
+    `;
+
+    let isLongPress = false;
+
+    el.onclick = (e) => {
+        if (isLongPress) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            isLongPress = false;
+            return;
+        }
+        if (onClick) onClick(e);
+    };
+
+    if (!disableLongPress && onLongPress) {
+        let timer;
+        const end = () => { clearTimeout(timer); el.classList.remove('pressing'); };
+        const start = () => {
+            isLongPress = false;
+            el.classList.add('pressing');
+            timer = setTimeout(() => {
+                isLongPress = true;
+                el.classList.remove('pressing');
+                if (navigator.vibrate) navigator.vibrate(50);
+                onLongPress(o);
+            }, 600);
+        };
+
+        el.addEventListener('touchstart', start, { passive: true });
+        el.addEventListener('touchend', end, { passive: false });
+        el.addEventListener('touchmove', end);
+        el.addEventListener('mousedown', start);
+        el.addEventListener('mouseup', end);
+        el.addEventListener('mouseleave', end);
+    }
+
+    return el;
+}
+
+function openForm(data = null, navigateFn) {
+    navigateFn('view-form');
+    dom.form.id.value = data ? data.order_id : '';
+    dom.form.date.value = data ? data.order_date : new Date().toISOString().split('T')[0];
+    dom.form.customer.value = data ? data.customer_id : '';
+    dom.form.address.value = data ? data.address : '';
+    dom.form.remarks.value = data ? data.remarks : '';
+    dom.form.container.innerHTML = '';
+
+    if (data) {
+        addProductRow({ product: data.product_name, qty: data.qty, price: data.price_hkd, option: data.option });
+    } else {
+        addProductRow();
+    }
+}
+
+function addProductRow(data = null) {
+    const row = document.createElement('div');
+    row.className = 'product-card';
+
+    row.innerHTML = `
+        <div style="margin-bottom:12px;">
+            <label class="form-label">상품명 <span style="color:var(--danger)">*</span></label>
+            <div class="autocomplete-wrapper">
+                <input class="form-input inp-product" placeholder="상품명 검색" value="${data ? data.product : ''}" autocomplete="off">
+                <div class="suggestion-box"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div style="flex:1;">
+                <label class="form-label">수량 <span style="color:var(--danger)">*</span></label>
+                <input class="form-input inp-qty" type="number" placeholder="1" value="${data ? data.qty : '1'}">
+            </div>
+            <div style="flex:1;">
+                <label class="form-label">단가 (HKD)</label>
+                <input class="form-input inp-price" type="number" placeholder="0" value="${data ? data.price : ''}">
+            </div>
+        </div>
+        <div style="margin-top:12px;">
+             <label class="form-label">옵션/사이즈 <span style="color:var(--danger)">*</span></label>
+             <div class="autocomplete-wrapper">
+                 <input class="form-input inp-option" placeholder="옵션 정보" value="${data ? data.option : ''}" autocomplete="off">
+                 <div class="suggestion-box"></div>
+             </div>
+        </div>
+    `;
+
+    const inpProd = row.querySelector('.inp-product');
+    const boxProd = row.querySelector('.inp-product + .suggestion-box');
+    const inpOpt = row.querySelector('.inp-option');
+    const boxOpt = row.querySelector('.inp-option + .suggestion-box');
+
+    setupAutocomplete(inpProd, boxProd, 'product_name');
+    setupAutocomplete(inpOpt, boxOpt, 'option', () => inpProd.value.trim());
+
+    bindRowActions(row);
+    dom.form.container.appendChild(row);
+}
+
+function setupAutocomplete(input, box, key, filterFn = null) {
+    input.addEventListener('input', () => {
+        const val = input.value.trim().toLowerCase();
+        if (!val) { box.classList.remove('active'); return; }
+
+        let source = STATE.orders;
+        if (filterFn) {
+            const filterVal = filterFn();
+            if (filterVal) source = source.filter(o => o.product_name === filterVal);
+        }
+
+        const unique = [...new Set(source.map(o => o[key]).filter(Boolean))];
+        const matches = unique.filter(txt => txt.toLowerCase().includes(val));
+
+        if (matches.length > 0) {
+            box.innerHTML = matches.map(txt => {
+                const idx = txt.toLowerCase().indexOf(val);
+                const pre = txt.substring(0, idx);
+                const match = txt.substring(idx, idx + val.length);
+                const post = txt.substring(idx + val.length);
+                return `<div class="suggestion-item"><span class="icon">🔍</span> ${pre}<span class="match">${match}</span>${post}</div>`;
+            }).join('');
+
+            box.querySelectorAll('.suggestion-item').forEach((item, i) => {
+                item.onclick = () => {
+                    input.value = matches[i];
+                    box.classList.remove('active');
+                };
+            });
+            box.classList.add('active');
+        } else {
+            box.classList.remove('active');
+        }
+    });
+
+    input.addEventListener('blur', () => setTimeout(() => box.classList.remove('active'), 200));
+    input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
+}
+
+function bindRowActions(row) {
+    let timer;
+    const start = () => {
+        row.classList.add('pressing');
+        timer = setTimeout(() => {
+            row.classList.remove('pressing');
+            if (navigator.vibrate) navigator.vibrate(50);
+            openProductSheet(row);
+        }, 600);
+    };
+    const end = () => { clearTimeout(timer); row.classList.remove('pressing'); };
+
+    row.addEventListener('touchstart', start, { passive: true });
+    row.addEventListener('touchend', end);
+    row.addEventListener('touchmove', end);
+    row.addEventListener('mousedown', start);
+    row.addEventListener('mouseup', end);
+    row.addEventListener('mouseleave', end);
+}
+
+function openProductSheet(row) {
+    _components_currentRow = row;
+    dom.prodSheet.classList.add('active');
+}
+
+function closeProductActionSheet() {
+    dom.prodSheet.classList.remove('active');
+    _components_currentRow = null;
+}
+
+function getCurrentRow() { return _components_currentRow; }

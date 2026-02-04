@@ -17,7 +17,16 @@
     <script src="html2canvas.min.js" defer></script>
 
     <!-- Main App -->
-    <script src="app.v2.js?v=Refactor14" defer></script>
+    <!-- Main App Split -->
+    <script src="js/config.js" defer></script>
+    <script src="js/state.js" defer></script>
+    <script src="js/dom.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/api.js" defer></script>
+    <script src="js/components.js" defer></script>
+    <script src="js/render.js" defer></script>
+    <script src="js/actions.js" defer></script>
+    <script src="js/main.js" defer></script>
 </head>
 
 <body>
@@ -330,23 +339,27 @@
             <div id="hk-item-list"
                 style="max-height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px;"></div>
 
-            <label class="form-label">배송 주소</label>
-            <input type="text" id="inp-hk-address" class="form-input" placeholder="Address">
+            <div id="hk-input-container" class="hidden">
+                <label class="form-label">배송 주소</label>
+                <input type="text" id="inp-hk-address" class="form-input" placeholder="Address">
 
-            <div class="row" style="margin-top:10px;">
-                <select id="sel-delivery-method" class="form-input">
-                    <option value="SF Express">SF Express</option>
-                    <option value="Local Post">Local Post</option>
-                    <option value="Meet-up">Meet-up</option>
-                    <option value="Pickup">Pickup</option>
-                </select>
+                <div class="row" style="margin-top:10px;">
+                    <select id="sel-delivery-method" class="form-input">
+                        <option value="SF Express">SF Express</option>
+                        <option value="Local Post">Local Post</option>
+                        <option value="Meet-up">Meet-up</option>
+                        <option value="Pickup">Pickup</option>
+                    </select>
+                </div>
+
+                <input type="text" id="inp-tracking" class="form-input" placeholder="Tracking No."
+                    style="margin-top:10px;">
+                <input type="number" id="inp-local-fee" class="form-input" placeholder="Local Fee (Total HKD)"
+                    style="margin-top:10px;">
             </div>
 
-            <input type="text" id="inp-tracking" class="form-input" placeholder="Tracking No." style="margin-top:10px;">
-            <input type="number" id="inp-local-fee" class="form-input" placeholder="Local Fee (Total HKD)"
-                style="margin-top:10px;">
-
-            <button id="btn-save-hk" class="btn-primary-large" style="margin-top:20px;">배송 정보 저장하기</button>
+            <button id="btn-hk-next" class="btn-primary-large" style="margin-top:20px;">배송 정보 입력하기</button>
+            <button id="btn-save-hk" class="btn-primary-large hidden" style="margin-top:20px;">배송 정보 저장하기</button>
         </div>
     </div>
 

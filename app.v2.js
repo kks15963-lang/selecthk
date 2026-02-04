@@ -110,6 +110,9 @@ const dom = {
     // HK Modal specific
     hkCustomerInfo: document.getElementById('hk-customer-info'),
     hkItemList: document.getElementById('hk-item-list'),
+    hkInputContainer: document.getElementById('hk-input-container'),
+    btnHkNext: document.getElementById('btn-hk-next'),
+    btnSaveHk: document.getElementById('btn-save-hk'),
     inpHkAddress: document.getElementById('inp-hk-address'),
     inpTracking: document.getElementById('inp-tracking'),
     inpLocalFee: document.getElementById('inp-local-fee'),
@@ -199,7 +202,12 @@ function setupEvents() {
     document.getElementById('btn-save-korea').onclick = saveKoreaShipping;
 
     document.getElementById('btn-bulk-hk').onclick = saveBulkHongKongDelivery;
-    document.getElementById('btn-save-hk').onclick = saveHongKongDelivery;
+    dom.btnHkNext.onclick = () => {
+        dom.hkInputContainer.classList.remove('hidden');
+        dom.btnHkNext.classList.add('hidden');
+        dom.btnSaveHk.classList.remove('hidden');
+    };
+    dom.btnSaveHk.onclick = saveHongKongDelivery;
 
     document.getElementById('btn-bulk-settle').onclick = () => openBatchModal('settlement');
     document.getElementById('btn-save-settle').onclick = saveBulkSettlement;
@@ -385,79 +393,111 @@ async function saveKoreaShipping() {
 
 async function saveBulkHongKongDelivery() {
     if (STATE.selectedHkIds.size === 0) return alert("배송할 고객/주문을 선택해주세요");
+
+    // Check if any selected order missing address
     const ids = Array.from(STATE.selectedHkIds);
-    openHkDeliveryModal();
+    const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
+
+    if (relevantOrders.some(o => !o.address || o.address.length < 5)) {
+        return alert("선택한 주문 중 '배송 정보'가 입력되지 않은 항목이 있습니다.\n먼저 정보를 입력해주세요.");
+    }
+
+    openHkDeliveryModal('bulk');
 }
 
-function openHkDeliveryModal() {
+function openHkDeliveryModal(mode = 'single') {
     const customerIds = Array.from(STATE.selectedHkIds);
     const relevantOrders = STATE.orders.filter(o => customerIds.includes(o.customer_id) && o.status === 'Shipped_to_HK');
 
     if (relevantOrders.length === 0) return alert("해당 조건의 주문이 없습니다.");
 
-    dom.hkCustomerInfo.innerHTML = `<strong>${customerIds.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
-    dom.hkItemList.innerHTML = relevantOrders.map(o => `<div>- ${o.product_name} (${o.option})</div>`).join('');
+    // Store mode for save function
+    dom.modals.hk.dataset.mode = mode;
 
     dom.inpHkAddress.value = relevantOrders[0]?.address || '';
-    dom.inpTracking.value = relevantOrders[0]?.tracking_no || ''; // Pre-fill if exists
+    dom.inpTracking.value = relevantOrders[0]?.tracking_no || '';
     dom.inpLocalFee.value = '';
 
-    // Store target customers in modal for save function reference (optional, or rely on selection)
-    // Actually simpler to just rely on STATE.selectedHkIds OR a temporary set
-    // If opened from Single Edit, we cleared selection and added the single ID, so it works naturally if we re-add it?
-    // Wait, in the btn-mng-delivery handler I cleared selection. So I should add it back?
-    // Let's make sure the handler added it to the set?
-    // No, I need a reliable way.
-    // Let's use a module-level variable for "DeliveryTargets" or just rely on the passed IDs.
+    // UI Reset based on Mode
+    dom.hkInputContainer.classList.add('hidden');
+    dom.btnHkNext.classList.add('hidden');
+    dom.btnSaveHk.classList.add('hidden');
 
-    // Better: Helper updates global state or we pass it.
-    // BUT saveHongKongDelivery is a click handler without args.
-    // So we must rely on STATE.selectedHkIds.
+    if (mode === 'bulk') {
+        // Bulk: Detailed Receipt View
+        dom.hkCustomerInfo.innerHTML = `<div style="text-align:center; font-weight:bold; margin-bottom:10px;">배송 정보 최종 확인 (${relevantOrders.length}건)</div>`;
 
-    // So let's update STATE.selectedHkIds inside this function IF it was passed explicitly?
-    // No, that side effect might be confusing.
-    // Let's assume the CALLER sets up STATE.selectedHkIds.
+        dom.hkItemList.innerHTML = relevantOrders.map(o => `
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+                <div style="font-weight:bold; font-size:13px; color:#334155;">${o.customer_id}</div>
+                <div style="font-size:12px; color:#64748b;">${o.product_name} (${o.option}) x${o.qty}</div>
+                <div style="margin-top:5px; font-size:12px;">
+                    <span style="display:block;">📍 ${o.address || '<span style="color:var(--danger)">주소 없음</span>'}</span>
+                    <span style="display:block;">📦 ${o.tracking_no || '<span style="color:#94a3b8">송장 없음</span>'}</span>
+                </div>
+            </div>
+        `).join('');
 
-    // RE-PLAN:
-    // btn-mng-delivery handler: CLEARS selectedHkIds -> ADDS target customer -> calls openHkDeliveryModal.
-    // saveBulkHongKongDelivery: Calls openHkDeliveryModal (selectedHkIds is already set).
-    // openHkDeliveryModal: Just opens UI.
+        dom.btnSaveHk.classList.remove('hidden');
+        dom.btnSaveHk.innerText = "모두 배송 완료 처리 (Complete)";
+    } else {
+        // Single: Inputs Shown (Edit Mode)
+        dom.hkCustomerInfo.innerHTML = `<strong>${customerIds.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
+        dom.hkItemList.innerHTML = relevantOrders.map(o => `<div>- ${o.product_name} (${o.option})</div>`).join('');
+
+        dom.hkInputContainer.classList.remove('hidden');
+        dom.btnSaveHk.classList.remove('hidden');
+        dom.btnSaveHk.innerText = "배송 정보 저장";
+    }
+
     dom.modals.hk.classList.remove('hidden');
 }
 
 async function saveHongKongDelivery() {
-    const address = dom.inpHkAddress.value.trim();
-    const tracking = dom.inpTracking.value.trim();
-    const localFee = dom.inpLocalFee.value.trim();
-
+    const mode = dom.modals.hk.dataset.mode;
     const ids = Array.from(STATE.selectedHkIds);
     if (ids.length === 0) return alert("대상 주문이 없습니다.");
 
     const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
-
     if (relevantOrders.length === 0) return;
 
-    const feePerItem = localFee ? (Number(localFee) / relevantOrders.length) : 0;
+    let updates = [];
 
-    const updates = relevantOrders.map(o => ({
-        order_id: o.order_id,
-        // Only update if input provided, else keep existing (Safe Batch)
-        address: address || o.address,
-        tracking_no: tracking || o.tracking_no,
-        local_fee_hkd: feePerItem || o.local_fee_hkd,
-        status: (address || o.address) ? 'Completed' : 'Shipped_to_HK', // Only complete if address exists
-        remarks: o.remarks + (tracking ? ` [Tracking: ${tracking}]` : '')
-    }));
+    if (mode === 'bulk') {
+        // Bulk Mode: Just Mark as Completed
+        updates = relevantOrders.map(o => ({
+            order_id: o.order_id,
+            status: 'Completed'
+        }));
 
-    // Check if we are potentially updating status to Completed without address
-    if (updates.some(u => u.status === 'Completed' && !u.address)) {
-        return alert("배송 주소가 없는 주문이 포함되어 있습니다. 주소를 입력해주세요.");
+        // Validate Addresses before allowing completion
+        if (relevantOrders.some(o => !o.address)) {
+            return alert("배송 주소가 없는 주문이 포함되어 있습니다. 정보를 먼저 입력해주세요.");
+        }
+
+    } else {
+        // Single/Edit Mode: Update Info ONLY (Do NOT complete)
+        const address = dom.inpHkAddress.value.trim();
+        const tracking = dom.inpTracking.value.trim();
+        const localFee = dom.inpLocalFee.value.trim();
+
+        const feePerItem = localFee ? (Number(localFee) / relevantOrders.length) : 0;
+
+        updates = relevantOrders.map(o => ({
+            order_id: o.order_id,
+            address: address || o.address, // Update if new value provided
+            tracking_no: tracking || o.tracking_no,
+            local_fee_hkd: feePerItem || o.local_fee_hkd,
+            // Status remains Shipped_to_HK
+            status: 'Shipped_to_HK',
+            remarks: o.remarks + (tracking && !o.remarks.includes(tracking) ? ` [TC: ${tracking}]` : '')
+        }));
     }
 
     showLoading();
     try {
         await sendBatchUpdate(updates);
-        alert("배송 완료 처리됨");
+        showToast(mode === 'bulk' ? "배송 완료 처리됨" : "정보가 저장되었습니다.");
         STATE.selectedHkIds.clear();
         dom.modals.hk.classList.add('hidden');
         loadData();
@@ -476,7 +516,7 @@ async function saveBulkSettlement() {
     showLoading();
     try {
         await sendBatchUpdate(updates);
-        alert("정산 완료");
+        showToast("정산 처리 완료되었습니다.");
         STATE.selectedFinanceIds.clear();
         dom.modals.settlement.classList.add('hidden');
         loadData();
@@ -634,7 +674,10 @@ function renderPurchaseList() {
     const items = STATE.orders.filter(o => o.status === 'Pending');
 
     const batchBtn = document.getElementById('action-bar-purchase');
-    if (STATE.selectedBatchIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedBatchIds.size > 0) {
+        batchBtn.classList.remove('hidden');
+        document.getElementById('btn-bulk-purchase').innerText = `선택한 항목 매입 확정하기 (${STATE.selectedBatchIds.size})`;
+    } else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderPurchaseList, (o) => {
         const has = STATE.selectedBatchIds.has(o.order_id);
@@ -652,7 +695,10 @@ function renderKoreaList() {
     const items = STATE.orders.filter(o => o.status === 'Ordered');
 
     const batchBtn = document.getElementById('action-bar-korea');
-    if (STATE.selectedKoreaIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedKoreaIds.size > 0) {
+        batchBtn.classList.remove('hidden');
+        document.getElementById('btn-bulk-korea').innerText = `선택한 항목 홍콩으로 발송하기 (${STATE.selectedKoreaIds.size})`;
+    } else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderKoreaList, (o) => {
         const has = STATE.selectedKoreaIds.has(o.order_id);
@@ -667,10 +713,19 @@ function renderKoreaList() {
 function renderHongKongList() {
     const list = dom.lists.hk;
     list.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
+
+    // Sort: Items with address first, then others
+    const items = STATE.orders.filter(o => o.status === 'Shipped_to_HK').sort((a, b) => {
+        const hasA = (a.address && a.address.length > 5) ? 1 : 0;
+        const hasB = (b.address && b.address.length > 5) ? 1 : 0;
+        return hasB - hasA; // Descending order of "has address"
+    });
 
     const batchBtn = document.getElementById('action-bar-hongkong');
-    if (STATE.selectedHkIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedHkIds.size > 0) {
+        batchBtn.classList.remove('hidden');
+        document.getElementById('btn-bulk-hk').innerText = `선택한 항목 배송 완료 처리 (${STATE.selectedHkIds.size})`;
+    } else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderHongKongList, (o) => {
         const has = STATE.selectedHkIds.has(o.customer_id);
@@ -686,7 +741,10 @@ function renderFinanceList() {
     const items = STATE.orders.filter(o => o.status === 'Completed');
 
     const batchBtn = document.getElementById('action-bar-finance');
-    if (STATE.selectedFinanceIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedFinanceIds.size > 0) {
+        batchBtn.classList.remove('hidden');
+        document.getElementById('btn-bulk-settle').innerText = `선택한 항목 수익 정산하기 (${STATE.selectedFinanceIds.size})`;
+    } else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderFinanceList, (o) => {
         const has = STATE.selectedFinanceIds.has(o.order_id);
@@ -694,7 +752,7 @@ function renderFinanceList() {
             if (has) STATE.selectedFinanceIds.delete(o.order_id);
             else STATE.selectedFinanceIds.add(o.order_id);
             renderFinanceList();
-        }, has);
+        }, has, true); // Disable long-press for Finance Tab
     });
 }
 
@@ -765,12 +823,13 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
 }
 
 // --- CARD & INPUTSHelpers ---
-// --- CARD & INPUTSHelpers ---
 function createCard(o, onClick, isSelected, disableLongPress = false) {
     const el = document.createElement('div');
     el.className = `card ${isSelected ? 'selected-glow' : ''}`;
 
-    const statusText = TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status;
+    const statusText = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5)
+        ? "배송정보 입력완료"
+        : (TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status);
 
     // Delivery Info Validation Badge (Hong Kong Tab specific logic)
     let warning = '';
@@ -794,19 +853,17 @@ function createCard(o, onClick, isSelected, disableLongPress = false) {
     // Long Press Logic
     let isLongPress = false;
 
-    if (onClick) {
-        el.onclick = (e) => {
-            if (isLongPress) {
-                // Prevent click if it was a long press
-                e.stopImmediatePropagation();
-                e.preventDefault();
-                isLongPress = false; // Reset
-                return;
-            }
-            onClick(e);
-        };
-
-    }
+    // Always attach click handler to intercept Long Press clicks
+    el.onclick = (e) => {
+        if (isLongPress) {
+            // Prevent click if it was a long press
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            isLongPress = false; // Reset
+            return;
+        }
+        if (onClick) onClick(e);
+    };
 
     if (!disableLongPress) {
         let timer;
@@ -934,7 +991,7 @@ function setupAutocomplete(input, box, key, filterFn = null) {
     input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
 }
 
-// ensureProductDatalist & updateOptionDatalist Removed as they are replaced by custom logic
+
 
 function bindRowActions(row) {
     let timer;
@@ -1078,27 +1135,26 @@ function setCurrency(c) { STATE.currencyMode = c; renderDashboard(); }
 function openManagementMenu(order) {
     STATE.managementTargetId = order.order_id;
 
+    if (order.status === 'Shipped_to_HK') {
+        // Direct Action: Open Delivery Modal immediately
+        STATE.selectedHkIds.clear();
+        STATE.selectedHkIds.add(order.customer_id);
+        openHkDeliveryModal();
+        return;
+    }
+
     const btnDelivery = document.getElementById('btn-mng-delivery');
     const btnReceipt = document.getElementById('btn-mng-receipt');
     const btnRefund = document.getElementById('btn-mng-refund');
     const btnEdit = document.getElementById('btn-mng-edit');
     const btnDelete = document.getElementById('btn-mng-delete');
 
-    if (order.status === 'Shipped_to_HK') {
-        // Delivery Tab Context: Only show Delivery Edit
-        btnDelivery?.classList.remove('hidden');
-        btnReceipt?.classList.add('hidden');
-        btnRefund?.classList.add('hidden');
-        btnEdit?.classList.add('hidden');
-        btnDelete?.classList.add('hidden');
-    } else {
-        // Normal Context: Show standard actions, hide Delivery Edit
-        btnDelivery?.classList.add('hidden');
-        btnReceipt?.classList.remove('hidden');
-        btnRefund?.classList.remove('hidden');
-        btnEdit?.classList.remove('hidden');
-        btnDelete?.classList.remove('hidden');
-    }
+    // Normal Context: Show standard actions, hide Delivery Edit
+    btnDelivery?.classList.add('hidden');
+    btnReceipt?.classList.remove('hidden');
+    btnRefund?.classList.remove('hidden');
+    btnEdit?.classList.remove('hidden');
+    btnDelete?.classList.remove('hidden');
 
     dom.mngSheet.classList.remove('hidden');
 }
