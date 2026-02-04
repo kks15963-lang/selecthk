@@ -7,6 +7,14 @@ const CONFIG = {
 
 const TRANS = {
     ko: {
+        // Settings
+        set_title: "설정 (Settings)", set_lang: "언어 설정 (Language)", set_curr: "통화 모드 (Currency View)",
+        set_rate: "환율 설정 (Exchange Rate)", desc_rate: "기본값: 실시간 환율 (수동 변경 가능)",
+        set_sync: "데이터 동기화", btn_refresh: "서버 데이터 새로고침 (Refresh)",
+
+        // Formatting
+        fmt_date: "YYYY-MM-DD",
+
         // Nav
         nav_dash: "현황", nav_list: "주문", nav_purchase: "매입", nav_korea: "배대지", nav_hk: "배송", nav_finance: "정산", nav_settings: "설정",
 
@@ -54,6 +62,14 @@ const TRANS = {
         msg_refresh: "데이터가 새로고침되었습니다."
     },
     cn: {
+        // Settings
+        set_title: "设置", set_lang: "语言设置", set_curr: "货币显示",
+        set_rate: "汇率设置", desc_rate: "默认: 实时汇率 (可手动修改)",
+        set_sync: "数据同步", btn_refresh: "刷新服务器数据",
+
+        // Formatting
+        fmt_date: "YYYY年-MM月-DD日",
+
         // Nav
         nav_dash: "概况", nav_list: "订单", nav_purchase: "采购", nav_korea: "集运", nav_hk: "发货", nav_finance: "结算", nav_settings: "设置",
 

@@ -202,10 +202,10 @@
 
         <!-- 7. SETTINGS -->
         <section id="view-settings" class="section">
-            <h2 class="section-title" style="margin-bottom:30px;">설정 (Settings)</h2>
+            <h2 class="section-title" style="margin-bottom:30px;" data-i18n="set_title">설정 (Settings)</h2>
 
             <div class="settings-group">
-                <label>언어 설정 (Language)</label>
+                <label data-i18n="set_lang">언어 설정 (Language)</label>
                 <div class="row">
                     <button id="btn-lang-ko" class="btn-option active">한국어</button>
                     <button id="btn-lang-cn" class="btn-option">中文</button>
@@ -213,7 +213,7 @@
             </div>
 
             <div class="settings-group">
-                <label>통화 모드 (Currency View)</label>
+                <label data-i18n="set_curr">통화 모드 (Currency View)</label>
                 <div class="row">
                     <button id="btn-curr-krw" class="btn-option active">KRW (원)</button>
                     <button id="btn-curr-hkd" class="btn-option">HKD (달러)</button>
@@ -221,18 +221,20 @@
             </div>
 
             <div class="settings-group">
-                <label>환율 설정 (Exchange Rate)</label>
+                <label data-i18n="set_rate">환율 설정 (Exchange Rate)</label>
                 <div style="display:flex; gap:10px;">
                     <input type="number" id="inp-exchange-rate" class="form-input" style="flex:1;">
                     <button id="btn-fetch-rate" class="btn-secondary-large"
                         style="width:auto; padding:0 20px;">↺</button>
                 </div>
-                <div style="font-size:11px; color:#94a3b8; margin-top:5px;">기본값: 실시간 환율 (수동 변경 가능)</div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:5px;" data-i18n="desc_rate">기본값: 실시간 환율 (수동 변경 가능)
+                </div>
             </div>
 
             <div class="settings-group">
-                <label>데이터 동기화</label>
-                <button id="btn-refresh-manual" class="btn-secondary-large">서버 데이터 새로고침 (Refresh)</button>
+                <label data-i18n="set_sync">데이터 동기화</label>
+                <button id="btn-refresh-manual" class="btn-secondary-large" data-i18n="btn_refresh">서버 데이터 새로고침
+                    (Refresh)</button>
             </div>
         </section>
 
