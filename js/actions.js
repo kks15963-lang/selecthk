@@ -144,11 +144,13 @@ async function saveHongKongDelivery() {
 
     let updates = [];
     if (mode === 'bulk') {
-        updates = relevantOrders.map(o => ({ order_id: o.order_id, status: 'Completed' }));
-        if (relevantOrders.some(o => !o.address)) {
+        // Bulk Complete: Validates Address -> Changes Status to Completed
+        if (relevantOrders.some(o => !o.address || o.address.length < 5)) {
             return alert("배송 주소가 없는 주문이 포함되어 있습니다. 정보를 먼저 입력해주세요.");
         }
+        updates = relevantOrders.map(o => ({ order_id: o.order_id, status: 'Completed' }));
     } else {
+        // Single/Info Edit Mode: Updates Info ONLY -> Status REMAINS 'Shipped_to_HK'
         const address = dom.inpHkAddress.value.trim();
         const tracking = dom.inpTracking.value.trim();
         const localFee = dom.inpLocalFee.value.trim();
@@ -159,7 +161,7 @@ async function saveHongKongDelivery() {
             address: address || o.address,
             tracking_no: tracking || o.tracking_no,
             local_fee_hkd: feePerItem || o.local_fee_hkd,
-            status: 'Shipped_to_HK',
+            status: 'Shipped_to_HK', // Force keep status
             remarks: o.remarks + (tracking && !o.remarks.includes(tracking) ? ` [TC: ${tracking}]` : '')
         }));
     }
@@ -167,8 +169,13 @@ async function saveHongKongDelivery() {
     showLoading();
     try {
         await sendBatchUpdate(updates);
-        showToast(mode === 'bulk' ? "배송 완료 처리됨" : "정보가 저장되었습니다.");
-        STATE.selectedHkIds.clear();
+        showToast(mode === 'bulk' ? "배송 완료 처리됨" : "정보가 업데이트 되었습니다.");
+
+        // Clear selection only on bulk complete
+        if (mode === 'bulk') {
+            STATE.selectedHkIds.clear();
+        }
+
         dom.modals.hk.classList.add('hidden');
         loadData();
     } catch (e) { console.error(e); }
