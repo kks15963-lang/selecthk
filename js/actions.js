@@ -170,13 +170,9 @@ async function saveHongKongDelivery() {
     try {
         await sendBatchUpdate(updates);
 
-        // Optimistic Update: Reflect changes locally immediately
-        updates.forEach(u => {
-            const target = STATE.orders.find(o => o.order_id === u.order_id);
-            if (target) {
-                Object.assign(target, u);
-            }
-        });
+        // Reliable Strategy: Wait for Google Sheets to update, then fetch fresh data
+        showToast("서버 동기화 중... (약 3초 소요)");
+        await new Promise(r => setTimeout(r, 2500));
 
         showToast(mode === 'bulk' ? "배송 완료 처리됨" : "정보가 업데이트 되었습니다.");
 
@@ -186,12 +182,8 @@ async function saveHongKongDelivery() {
 
         dom.modals.hk.classList.add('hidden');
 
-        // Force re-render to show status change (Green Badge) immediately
-        if (STATE.selectedTab === 'view-hongkong') renderHongKongList();
-        else renderDashboard();
-
-        // Fetch fresh data with a slight delay to allow Sheets to catch up
-        setTimeout(loadData, 1500);
+        // Fetch absolute fresh data from server
+        await loadData();
 
     } catch (e) { console.error(e); }
     finally { hideLoading(); }
