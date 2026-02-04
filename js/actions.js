@@ -169,15 +169,30 @@ async function saveHongKongDelivery() {
     showLoading();
     try {
         await sendBatchUpdate(updates);
+
+        // Optimistic Update: Reflect changes locally immediately
+        updates.forEach(u => {
+            const target = STATE.orders.find(o => o.order_id === u.order_id);
+            if (target) {
+                Object.assign(target, u);
+            }
+        });
+
         showToast(mode === 'bulk' ? "배송 완료 처리됨" : "정보가 업데이트 되었습니다.");
 
-        // Clear selection only on bulk complete
         if (mode === 'bulk') {
             STATE.selectedHkIds.clear();
         }
 
         dom.modals.hk.classList.add('hidden');
-        loadData();
+
+        // Force re-render to show status change (Green Badge) immediately
+        if (STATE.selectedTab === 'view-hongkong') renderHongKongList();
+        else renderDashboard();
+
+        // Fetch fresh data with a slight delay to allow Sheets to catch up
+        setTimeout(loadData, 1500);
+
     } catch (e) { console.error(e); }
     finally { hideLoading(); }
 }
