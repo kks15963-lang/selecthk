@@ -230,53 +230,65 @@ function setupEvents() {
         if (o) showReceipt(o);
         dom.mngSheet.classList.add('hidden');
     };
-
-
-    // Settings
-    document.getElementById('btn-lang-ko').onclick = () => setLang('ko');
-    document.getElementById('btn-lang-cn').onclick = () => setLang('cn');
-    document.getElementById('btn-curr-krw').onclick = () => setCurrency('KRW');
-    document.getElementById('btn-curr-hkd').onclick = () => setCurrency('HKD');
-    document.getElementById('btn-refresh-manual').onclick = loadData;
-
-    // Global Dismiss
-    document.addEventListener('click', (e) => {
-        // Modal Dismiss
-        if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
-        if (e.target.classList.contains('action-sheet-overlay')) closeProductActionSheet();
-
-        // Management Sheet Dismiss (Clicking outside)
-        if (!dom.mngSheet.classList.contains('hidden') && !dom.mngSheet.contains(e.target)) {
-            // Check if we didn't just click a card to open it
-            const pressing = document.querySelector('.card.pressing');
-            if (!pressing) dom.mngSheet.classList.add('hidden');
+    document.getElementById('btn-mng-delivery').onclick = () => {
+        const o = STATE.orders.find(x => x.order_id === STATE.managementTargetId);
+        if (o) {
+            // Check if we are in bulk selection, if so warn or just deselect?
+            // Prioritize single edit
+            STATE.selectedHkIds.clear();
+            openHkDeliveryModal([o.customer_id]);
         }
-    });
+        dom.mngSheet.classList.add('hidden');
+    };
+    dom.mngSheet.classList.add('hidden');
+};
 
-    // Receipt Close
-    document.getElementById('btn-close-receipt').onclick = () => dom.modals.receipt.classList.add('hidden');
 
-    // Receipt Long Press Save
-    const paper = document.getElementById('receipt-paper');
-    if (paper) {
-        let timer;
-        const start = () => {
-            paper.classList.add('saving');
-            timer = setTimeout(() => {
-                paper.classList.remove('saving');
-                if (navigator.vibrate) navigator.vibrate(50);
-                saveReceiptImage();
-            }, 800);
-        };
-        const end = () => { clearTimeout(timer); paper.classList.remove('saving'); };
+// Settings
+document.getElementById('btn-lang-ko').onclick = () => setLang('ko');
+document.getElementById('btn-lang-cn').onclick = () => setLang('cn');
+document.getElementById('btn-curr-krw').onclick = () => setCurrency('KRW');
+document.getElementById('btn-curr-hkd').onclick = () => setCurrency('HKD');
+document.getElementById('btn-refresh-manual').onclick = loadData;
 
-        paper.addEventListener('touchstart', start, { passive: true });
-        paper.addEventListener('touchend', end);
-        paper.addEventListener('touchmove', end);
-        paper.addEventListener('mousedown', start);
-        paper.addEventListener('mouseup', end);
-        paper.addEventListener('mouseleave', end);
+// Global Dismiss
+document.addEventListener('click', (e) => {
+    // Modal Dismiss
+    if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
+    if (e.target.classList.contains('action-sheet-overlay')) closeProductActionSheet();
+
+    // Management Sheet Dismiss (Clicking outside)
+    if (!dom.mngSheet.classList.contains('hidden') && !dom.mngSheet.contains(e.target)) {
+        // Check if we didn't just click a card to open it
+        const pressing = document.querySelector('.card.pressing');
+        if (!pressing) dom.mngSheet.classList.add('hidden');
     }
+});
+
+// Receipt Close
+document.getElementById('btn-close-receipt').onclick = () => dom.modals.receipt.classList.add('hidden');
+
+// Receipt Long Press Save
+const paper = document.getElementById('receipt-paper');
+if (paper) {
+    let timer;
+    const start = () => {
+        paper.classList.add('saving');
+        timer = setTimeout(() => {
+            paper.classList.remove('saving');
+            if (navigator.vibrate) navigator.vibrate(50);
+            saveReceiptImage();
+        }, 800);
+    };
+    const end = () => { clearTimeout(timer); paper.classList.remove('saving'); };
+
+    paper.addEventListener('touchstart', start, { passive: true });
+    paper.addEventListener('touchend', end);
+    paper.addEventListener('touchmove', end);
+    paper.addEventListener('mousedown', start);
+    paper.addEventListener('mouseup', end);
+    paper.addEventListener('mouseleave', end);
+}
 }
 
 // --- DATA LOGIC ---
@@ -373,16 +385,43 @@ async function saveKoreaShipping() {
 
 async function saveBulkHongKongDelivery() {
     if (STATE.selectedHkIds.size === 0) return alert("배송할 고객/주문을 선택해주세요");
-
     const ids = Array.from(STATE.selectedHkIds);
-    const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
+    openHkDeliveryModal();
+}
 
-    dom.hkCustomerInfo.innerHTML = `<strong>${ids.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
+function openHkDeliveryModal() {
+    const customerIds = Array.from(STATE.selectedHkIds);
+    const relevantOrders = STATE.orders.filter(o => customerIds.includes(o.customer_id) && o.status === 'Shipped_to_HK');
+
+    if (relevantOrders.length === 0) return alert("해당 조건의 주문이 없습니다.");
+
+    dom.hkCustomerInfo.innerHTML = `<strong>${customerIds.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
     dom.hkItemList.innerHTML = relevantOrders.map(o => `<div>- ${o.product_name} (${o.option})</div>`).join('');
 
     dom.inpHkAddress.value = relevantOrders[0]?.address || '';
-    dom.inpTracking.value = '';
+    dom.inpTracking.value = relevantOrders[0]?.tracking_no || ''; // Pre-fill if exists
     dom.inpLocalFee.value = '';
+
+    // Store target customers in modal for save function reference (optional, or rely on selection)
+    // Actually simpler to just rely on STATE.selectedHkIds OR a temporary set
+    // If opened from Single Edit, we cleared selection and added the single ID, so it works naturally if we re-add it?
+    // Wait, in the btn-mng-delivery handler I cleared selection. So I should add it back?
+    // Let's make sure the handler added it to the set?
+    // No, I need a reliable way.
+    // Let's use a module-level variable for "DeliveryTargets" or just rely on the passed IDs.
+
+    // Better: Helper updates global state or we pass it.
+    // BUT saveHongKongDelivery is a click handler without args.
+    // So we must rely on STATE.selectedHkIds.
+
+    // So let's update STATE.selectedHkIds inside this function IF it was passed explicitly?
+    // No, that side effect might be confusing.
+    // Let's assume the CALLER sets up STATE.selectedHkIds.
+
+    // RE-PLAN:
+    // btn-mng-delivery handler: CLEARS selectedHkIds -> ADDS target customer -> calls openHkDeliveryModal.
+    // saveBulkHongKongDelivery: Calls openHkDeliveryModal (selectedHkIds is already set).
+    // openHkDeliveryModal: Just opens UI.
 
     dom.modals.hk.classList.remove('hidden');
 }
@@ -392,8 +431,9 @@ async function saveHongKongDelivery() {
     const tracking = dom.inpTracking.value;
     const localFee = dom.inpLocalFee.value;
 
-    // Distribute local fee
     const ids = Array.from(STATE.selectedHkIds);
+    if (ids.length === 0) return alert("대상 주문이 없습니다.");
+
     const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
 
     if (relevantOrders.length === 0) return;
@@ -958,6 +998,15 @@ function setCurrency(c) { STATE.currencyMode = c; renderDashboard(); }
 // --- MANAGEMENT MENU ---
 function openManagementMenu(order) {
     STATE.managementTargetId = order.order_id;
+
+    // Toggle Delivery Edit Button
+    const btnDelivery = document.getElementById('btn-mng-delivery');
+    if (order.status === 'Shipped_to_HK') {
+        btnDelivery.classList.remove('hidden');
+    } else {
+        btnDelivery.classList.add('hidden');
+    }
+
     dom.mngSheet.classList.remove('hidden');
 }
 

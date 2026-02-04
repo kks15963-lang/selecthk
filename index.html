@@ -369,8 +369,11 @@
             </button>
         </div>
         <div style="height:30px;"></div>
-        <div class="sub-actions" style="display:flex; justify-content:space-between; margin-bottom:15px;">
-            <button id="btn-mng-receipt" class="btn-link">🧾 영수증 확인</button>
+        <div class="sub-actions"
+            style="display:flex; justify-content:space-between; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <button id="btn-mng-delivery" class="btn-link hidden"
+                style="width:100%; border-color:var(--primary); color:var(--primary);">🚚 배송 정보 입력/수정</button>
+            <button id="btn-mng-receipt" class="btn-link" style="flex:1;">🧾 영수증 확인</button>
             <button id="btn-mng-refund" class="btn-link">↩️ 환불 및 취소</button>
         </div>
         <button id="btn-mng-edit" class="btn-primary-large">주문 정보 수정하고 업데이트하기</button>
