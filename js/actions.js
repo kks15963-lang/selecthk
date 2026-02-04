@@ -189,9 +189,18 @@ function toggleHkSelection(o) {
 }
 
 function openBatchModal(type) {
-    if (type === 'purchase') dom.modals.purchase.classList.remove('hidden');
-    if (type === 'korea') dom.modals.korea.classList.remove('hidden');
-    if (type === 'settlement') dom.modals.settlement.classList.remove('hidden');
+    if (type === 'purchase') {
+        dom.modalInpKrw.value = '';
+        dom.modals.purchase.classList.remove('hidden');
+    }
+    if (type === 'korea') {
+        dom.inpShipTotal.value = '';
+        dom.modals.korea.classList.remove('hidden');
+    }
+    if (type === 'settlement') {
+        if (dom.inpSettleTotal) dom.inpSettleTotal.value = '';
+        dom.modals.settlement.classList.remove('hidden');
+    }
 }
 
 async function savePurchaseCost() {
