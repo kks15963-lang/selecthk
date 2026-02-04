@@ -102,6 +102,19 @@ const dom = {
         receipt: document.getElementById('receipt-modal')
     },
 
+    // Modal Inputs
+    modalInpKrw: document.getElementById('modal-inp-krw'),
+    inpShipTotal: document.getElementById('inp-ship-total'),
+    inpSettleTotal: document.getElementById('inp-settle-total'),
+
+    // HK Modal specific
+    hkCustomerInfo: document.getElementById('hk-customer-info'),
+    hkItemList: document.getElementById('hk-item-list'),
+    inpHkAddress: document.getElementById('inp-hk-address'),
+    inpTracking: document.getElementById('inp-tracking'),
+    inpLocalFee: document.getElementById('inp-local-fee'),
+    selDeliveryMethod: document.getElementById('sel-delivery-method'),
+
     // Action Sheets
     mngSheet: document.getElementById('order-management-sheet'),
     prodSheet: document.getElementById('product-action-sheet')
@@ -122,7 +135,6 @@ async function init() {
         loadData();
     }
 
-    // Attempt to fetch rate in background
     fetchExchangeRate();
 }
 
@@ -183,10 +195,38 @@ function setupEvents() {
     document.getElementById('btn-save-korea').onclick = saveKoreaShipping;
 
     document.getElementById('btn-bulk-hk').onclick = saveBulkHongKongDelivery;
-    document.getElementById('btn-save-hk').onclick = saveHongKongDelivery; // From single editing context if implemented
+    document.getElementById('btn-save-hk').onclick = saveHongKongDelivery;
 
     document.getElementById('btn-bulk-settle').onclick = () => openBatchModal('settlement');
     document.getElementById('btn-save-settle').onclick = saveBulkSettlement;
+
+    // Management Sheet Actions (Bound ONCE)
+    document.getElementById('btn-mng-edit').onclick = () => {
+        const o = STATE.orders.find(x => x.order_id === STATE.managementTargetId);
+        if (o) openForm(o);
+        dom.mngSheet.classList.add('hidden');
+    };
+    document.getElementById('btn-mng-refund').onclick = async () => {
+        if (confirm("환불 처리하고 주문 취소하시겠습니까?")) {
+            await sendBatchUpdate([{ order_id: STATE.managementTargetId, status: 'Cancelled' }]);
+            alert("환불 처리되었습니다.");
+            loadData();
+        }
+        dom.mngSheet.classList.add('hidden');
+    };
+    document.getElementById('btn-mng-delete').onclick = async () => {
+        if (confirm("정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+            await sendData({ action: 'deleteOrder', order_id: STATE.managementTargetId, auth: STATE.auth });
+            loadData();
+        }
+        dom.mngSheet.classList.add('hidden');
+    };
+    document.getElementById('btn-mng-receipt').onclick = () => {
+        const o = STATE.orders.find(x => x.order_id === STATE.managementTargetId);
+        if (o) showReceipt(o);
+        dom.mngSheet.classList.add('hidden');
+    };
+
 
     // Settings
     document.getElementById('btn-lang-ko').onclick = () => setLang('ko');
@@ -197,8 +237,16 @@ function setupEvents() {
 
     // Global Dismiss
     document.addEventListener('click', (e) => {
+        // Modal Dismiss
         if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
         if (e.target.classList.contains('action-sheet-overlay')) closeProductActionSheet();
+
+        // Management Sheet Dismiss (Clicking outside)
+        if (!dom.mngSheet.classList.contains('hidden') && !dom.mngSheet.contains(e.target)) {
+            // Check if we didn't just click a card to open it
+            const pressing = document.querySelector('.card.pressing');
+            if (!pressing) dom.mngSheet.classList.add('hidden');
+        }
     });
 
     // Receipt Close
@@ -244,6 +292,143 @@ async function sendData(payload) {
 
 async function sendBatchUpdate(updates) {
     return await sendData({ action: 'updateOrders', auth: STATE.auth, data: updates });
+}
+
+// --- SAVE ACTIONS (RESTORED) ---
+async function savePurchaseCost() {
+    const cost = dom.modalInpKrw.value;
+    if (!cost) return alert("매입가(KRW)를 입력해주세요");
+
+    if (STATE.selectedBatchIds.size === 0) return alert("선택된 주문이 없습니다.");
+
+    const updates = Array.from(STATE.selectedBatchIds).map(id => ({
+        order_id: id,
+        cost_krw: Number(cost),
+        status: 'Ordered'
+    }));
+
+    showLoading();
+    try {
+        await sendBatchUpdate(updates);
+        alert("매입 처리 완료");
+        STATE.selectedBatchIds.clear();
+        dom.modals.purchase.classList.add('hidden');
+        loadData();
+    } catch (e) { console.error(e); alert("오류 발생"); }
+    finally { hideLoading(); }
+}
+
+async function saveKoreaShipping() {
+    const fee = dom.inpShipTotal.value;
+    if (!fee) return alert("배송비(HKD)를 입력해주세요");
+
+    // Distribute fee among selected items
+    const count = STATE.selectedKoreaIds.size;
+    if (count === 0) return alert("선택된 주문이 없습니다.");
+
+    const feePerItem = Number(fee) / count; // Simple division
+
+    const updates = Array.from(STATE.selectedKoreaIds).map(id => ({
+        order_id: id,
+        ship_fee_krw: feePerItem, // Storing HKD value in KRW column as per old logic or specific logic?
+        // Note: The dashboard logic reads ship_fee_krw as HKD value if status is Settled, checking legacy logic.
+        // Dashboard code: const s_hkd = Number(o.ship_fee_krw) || 0; // Value is HKD
+        // So yes, store HKD value here.
+        status: 'Shipped_to_HK'
+    }));
+
+    showLoading();
+    try {
+        await sendBatchUpdate(updates);
+        alert("발송 처리 완료");
+        STATE.selectedKoreaIds.clear();
+        dom.modals.korea.classList.add('hidden');
+        loadData();
+    } catch (e) { console.error(e); alert("오류 발생"); }
+    finally { hideLoading(); }
+}
+
+async function saveBulkHongKongDelivery() {
+    // Current logic: Just mark as Completed? Or open modal to input tracking?
+    // User flow: List -> Select -> "Ship" -> Modal -> Save
+    // For bulk, let's open the modal if items selected
+    if (STATE.selectedHkIds.size === 0) return alert("배송할 고객/주문을 선택해주세요");
+
+    // Populate Modal
+    const ids = Array.from(STATE.selectedHkIds); // These are CUSTOMER IDs in old logic, but we switched to Card selection which usually implies Order IDs.
+    // However, in renderHongKongList, we toggle toggleHkSelection(o), adding o.customer_id.
+    // So selectedHkIds contains Customer IDs.
+
+    const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
+
+    dom.hkCustomerInfo.innerHTML = `<strong>${ids.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
+    dom.hkItemList.innerHTML = relevantOrders.map(o => `<div>- ${o.product_name} (${o.option})</div>`).join('');
+
+    // Clear inputs
+    dom.inpHkAddress.value = relevantOrders[0]?.address || ''; // Pre-fill first
+    dom.inpTracking.value = '';
+    dom.inpLocalFee.value = '';
+
+    dom.modals.hk.classList.remove('hidden');
+}
+
+async function saveHongKongDelivery() {
+    // Save from Modal
+    const address = dom.inpHkAddress.value;
+    const method = dom.selDeliveryMethod.value;
+    const tracking = dom.inpTracking.value;
+    const localFee = dom.inpLocalFee.value; // Total for this batch
+
+    // Distribute local fee
+    const ids = Array.from(STATE.selectedHkIds);
+    const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
+
+    if (relevantOrders.length === 0) return;
+
+    const feePerItem = localFee ? (Number(localFee) / relevantOrders.length) : 0;
+
+    const updates = relevantOrders.map(o => ({
+        order_id: o.order_id,
+        address: address, // Update address if changed
+        tracking_no: tracking, // We don't have this col in schema explicit? assuming remarks or separate. 
+        // Schema checks: 17 cols. tracking_no might be col 15/16. Let's assume server handles 'tracking_no' key.
+        local_fee_hkd: feePerItem,
+        status: 'Completed',
+        remarks: o.remarks + (tracking ? ` [Tracking: ${tracking}]` : '') // Append to remarks if no column
+    }));
+
+    showLoading();
+    try {
+        await sendBatchUpdate(updates);
+        alert("배송 완료 처리됨");
+        STATE.selectedHkIds.clear();
+        dom.modals.hk.classList.add('hidden');
+        loadData();
+    } catch (e) { console.error(e); }
+    finally { hideLoading(); }
+}
+
+async function saveBulkSettlement() {
+    const settleTotal = dom.inpSettleTotal.value; // Optional Manual Override?
+    // Actually settlement is usually just status change to 'Settled'.
+    // If calculating total valid amount, dashboard does it.
+
+    if (STATE.selectedFinanceIds.size === 0) return alert("정산할 주문을 선택해주세요");
+
+    const updates = Array.from(STATE.selectedFinanceIds).map(id => ({
+        order_id: id,
+        status: 'Settled'
+    }));
+
+    showLoading();
+    try {
+        await sendBatchUpdate(updates);
+        alert("정산 완료");
+        STATE.selectedFinanceIds.clear();
+        dom.modals.settlement.classList.add('hidden');
+        loadData();
+    } catch (e) { console.error(e); }
+    finally { hideLoading(); }
 }
 
 // --- RENDERERS ---
@@ -335,7 +520,6 @@ function renderPurchaseList() {
     list.innerHTML = '';
     const items = STATE.orders.filter(o => o.status === 'Pending');
 
-    // Toggle Button visibility
     const batchBtn = document.getElementById('action-bar-purchase');
     if (items.length > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
 
@@ -372,20 +556,14 @@ function renderHongKongList() {
     list.innerHTML = '';
     const items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
 
-    // Group by Customer logic if needed, but for now simple list with multi-select support for Bulk Ship
     const batchBtn = document.getElementById('action-bar-hongkong');
     if (items.length > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderHongKongList, (o) => {
-        const has = STATE.selectedHkIds.has(o.customer_id); // Bulk by Customer? Or Order? Using Order ID for now logic
-        // Wait, current logic uses Customer ID for HK grouping. 
-        // Let's stick to Order ID for consistency in multi-selection visual.
-        // Actually, previous logic was Customer based. Let's simplify to Order ID based for check.
-        // But keep "Group Delivery" concept in modal.
+        const has = STATE.selectedHkIds.has(o.customer_id);
         return createCard(o, () => {
-            // Just toggle selection
             toggleHkSelection(o);
-        }, STATE.selectedHkIds.has(o.customer_id)); // Highlighting all orders of that customer?
+        }, STATE.selectedHkIds.has(o.customer_id));
     });
 }
 
@@ -409,23 +587,19 @@ function renderFinanceList() {
 
 // --- PAGINATION COMPONENT ---
 function renderPagination(container, items, renderFunc, createItemOverride = null) {
-    // 1. Slice
     const { currentPage, itemsPerPage } = STATE.pagination;
     const totalPages = Math.ceil(items.length / itemsPerPage);
     const start = (currentPage - 1) * itemsPerPage;
     const pageItems = items.slice(start, start + itemsPerPage);
 
-    // 2. Render Items
     pageItems.forEach(o => {
         const card = createItemOverride ? createItemOverride(o) : createCard(o);
         container.appendChild(card);
     });
 
-    // 3. Render Controls
     const wrapper = document.createElement('div');
     wrapper.className = 'pagination-wrapper';
 
-    // Limit Select
     const select = document.createElement('select');
     [10, 30, 50].forEach(n => {
         const opt = document.createElement('option');
@@ -439,7 +613,6 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
         renderFunc();
     };
 
-    // Buttons
     const btns = document.createElement('div');
     btns.className = 'pagination-controls';
 
@@ -478,7 +651,6 @@ function createCard(o, onClick, isSelected) {
     const el = document.createElement('div');
     el.className = `card ${isSelected ? 'selected-glow' : ''}`;
 
-    // Status Badge
     const statusText = TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status;
 
     el.innerHTML = `
@@ -519,7 +691,6 @@ function createCard(o, onClick, isSelected) {
 
 function openForm(data = null) {
     navigate('view-form');
-    // Clear or Set Data
     dom.form.id.value = data ? data.order_id : '';
     dom.form.date.value = data ? data.order_date : new Date().toISOString().split('T')[0];
     dom.form.customer.value = data ? data.customer_id : '';
@@ -528,8 +699,6 @@ function openForm(data = null) {
     dom.form.container.innerHTML = '';
 
     if (data) {
-        // If edit mode, just one row usually? Or recreate multiple if we stored them individually
-        // Our structure implies single order per row. So 1 product.
         addProductRow({ product: data.product_name, qty: data.qty, price: data.price_hkd, option: data.option });
     } else {
         addProductRow();
@@ -563,7 +732,6 @@ function addProductRow(data = null) {
         </div>
     `;
 
-    // Autocomplete Wiring
     const inpProd = row.querySelector('.inp-product');
     const inpOpt = row.querySelector('.inp-option');
     const dlOpt = row.querySelector('datalist');
@@ -580,14 +748,10 @@ function addProductRow(data = null) {
     inpProd.addEventListener('focus', ensureProductDatalist);
 
     inpOpt.addEventListener('focus', handleUpdate);
-    inpOpt.addEventListener('click', handleUpdate); // Mobile touch fix
+    inpOpt.addEventListener('click', handleUpdate);
 
-    // Init
     if (data && data.product) handleUpdate();
-
-    // Row Action (Long Press) 
     bindRowActions(row);
-
     dom.form.container.appendChild(row);
 }
 
@@ -645,7 +809,6 @@ function closeProductActionSheet() {
     currentRow = null;
 }
 
-// Action Sheet Buttons
 document.getElementById('btn-action-add').onclick = () => {
     addProductRow();
     closeProductActionSheet();
@@ -666,7 +829,6 @@ document.getElementById('btn-action-cancel').onclick = closeProductActionSheet;
 
 // --- SAVE LOGIC ---
 async function saveOrder() {
-    // Validate
     const cust = dom.form.customer.value.trim();
     if (!cust) return alert("고객명을 입력해주세요");
 
@@ -700,7 +862,7 @@ async function saveOrder() {
         if (res) {
             alert('저장되었습니다.');
             navigate('view-list');
-            loadData(); // Sync
+            loadData();
         }
     } catch (e) { console.error(e); alert('저장 실패'); }
     finally { hideLoading(); }
@@ -709,9 +871,6 @@ async function saveOrder() {
 
 // --- UTILS ---
 function toggleHkSelection(o) {
-    // Select all orders from this customer? Or just this one?
-    // User requested "Group Delivery". Let's toggle THIS one, but logic elsewhere might bulk checks.
-    // For simplicity: Single toggle.
     if (STATE.selectedHkIds.has(o.customer_id)) STATE.selectedHkIds.delete(o.customer_id);
     else STATE.selectedHkIds.add(o.customer_id);
     renderHongKongList();
@@ -723,7 +882,6 @@ function openBatchModal(type) {
     if (type === 'settlement') dom.modals.settlement.classList.remove('hidden');
 }
 
-// Set Date Filters
 function setDashDate(days) {
     const d = new Date();
     d.setDate(d.getDate() - days);
@@ -762,19 +920,22 @@ function setCurrency(c) { STATE.currencyMode = c; renderDashboard(); }
 function openManagementMenu(order) {
     STATE.managementTargetId = order.order_id;
     dom.mngSheet.classList.remove('hidden');
+}
 
-    // Bind dynamic actions
-    document.getElementById('btn-mng-edit').onclick = () => {
-        openForm(order);
-        dom.mngSheet.classList.add('hidden');
-    };
+// Receipt Logic
+function showReceipt(order) {
+    dom.modals.receipt.classList.remove('hidden');
 
-    document.getElementById('btn-mng-delete').onclick = async () => {
-        if (confirm("삭제하시겠습니까? (서버 반영)")) {
-            // Delete Logic
-            await sendData({ action: 'deleteOrder', order_id: order.order_id, auth: STATE.auth });
-            loadData();
-        }
-        dom.mngSheet.classList.add('hidden');
-    };
+    document.getElementById('rcpt-date').innerText = order.order_date;
+    document.getElementById('rcpt-id').innerText = '#' + order.order_id.slice(-5);
+
+    // If order is singular (from list), just one item
+    document.getElementById('rcpt-items').innerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <span>${order.product_name} (${order.option}) x${order.qty}</span>
+            <span>$${order.price_hkd}</span>
+        </div>
+    `;
+
+    document.getElementById('rcpt-total').innerText = 'HKD ' + order.price_hkd;
 }
