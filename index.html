@@ -43,13 +43,17 @@
         <section id="view-dashboard" class="section active">
             <!-- Hero Metrics -->
             <div class="dashboard-grid">
-                <div class="stat-card hero-card" onclick="toggleCurrencyMode()">
+                <div class="stat-card" onclick="toggleCurrencyMode()">
                     <div class="stat-label">
                         <span data-i18n="stat_profit">예상 수익</span>
                         <span id="label-curr-mode" class="badge"
                             style="background:rgba(0,0,0,0.05); margin-left:5px;">KRW</span>
                     </div>
                     <div class="stat-value" id="stat-profit">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat_pending_settle">정산 필요</div>
+                    <div class="stat-value" id="stat-pending-settle">0</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label" data-i18n="stat_revenue">매출 (Sales)</div>
@@ -66,9 +70,11 @@
             <!-- Date Filter -->
             <div class="dashboard-filter" style="margin-top:20px;">
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <input type="date" id="dash-date-start" class="form-input" style="flex:1;">
+                    <input type="text" id="dash-date-start" class="form-input" style="flex:1;" placeholder="YYYY-MM-DD"
+                        data-i18n-ph="fmt_date" onfocus="(this.type='date')" onblur="(this.type='text')">
                     <span style="align-self:center; color:#94a3b8;">~</span>
-                    <input type="date" id="dash-date-end" class="form-input" style="flex:1;">
+                    <input type="text" id="dash-date-end" class="form-input" style="flex:1;" placeholder="YYYY-MM-DD"
+                        data-i18n-ph="fmt_date" onfocus="(this.type='date')" onblur="(this.type='text')">
                 </div>
                 <div style="display:flex; justify-content:space-between;">
                     <div class="preset-group">
@@ -131,9 +137,12 @@
                     </select>
                 </div>
                 <div class="filter-row">
-                    <input type="date" id="filter-date-start" class="form-input" style="flex:1;">
+                    <input type="text" id="filter-date-start" class="form-input" style="flex:1;"
+                        placeholder="YYYY-MM-DD" data-i18n-ph="fmt_date" onfocus="(this.type='date')"
+                        onblur="(this.type='text')">
                     <span style="align-self:center; color:#94a3b8;">~</span>
-                    <input type="date" id="filter-date-end" class="form-input" style="flex:1;">
+                    <input type="text" id="filter-date-end" class="form-input" style="flex:1;" placeholder="YYYY-MM-DD"
+                        data-i18n-ph="fmt_date" onfocus="(this.type='date')" onblur="(this.type='text')">
                 </div>
                 <div class="filter-actions">
                     <div class="preset-group">
@@ -248,7 +257,8 @@
             <input type="hidden" id="inp-order-id">
             <div class="form-group">
                 <label class="form-label" data-i18n="lbl_date">날짜</label>
-                <input type="date" id="inp-date" class="form-input">
+                <input type="text" id="inp-date" class="form-input" placeholder="YYYY-MM-DD" data-i18n-ph="fmt_date"
+                    onfocus="(this.type='date')" onblur="(this.type='text')">
             </div>
             <div class="form-group">
                 <label class="form-label"><span data-i18n="lbl_customer">고객명</span> <span
@@ -387,7 +397,7 @@
     <!-- Sheet: Order Management -->
     <div id="order-management-sheet" class="management-sheet hidden">
         <div style="position:absolute; top:15px; right:20px;">
-            <button id="btn-mng-delete" class="action-btn danger"
+            <button id="btn-mng-delete" class="action-btn danger" data-i18n="btn_mng_del"
                 style="padding:0; border:none; font-size:12px; width:auto; justify-content:flex-end;">
                 🗑️ 기록 삭제
             </button>
@@ -395,22 +405,23 @@
         <div style="height:30px;"></div>
         <div class="sub-actions"
             style="display:flex; justify-content:space-between; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-            <button id="btn-mng-delivery" class="btn-link hidden"
+            <button id="btn-mng-delivery" class="btn-link hidden" data-i18n="btn_mng_ship"
                 style="width:100%; border-color:var(--primary); color:var(--primary);">🚚 배송 정보 입력/수정</button>
-            <button id="btn-mng-receipt" class="btn-link" style="flex:1;">🧾 영수증 확인</button>
-            <button id="btn-mng-refund" class="btn-link">↩️ 환불 및 취소</button>
+            <button id="btn-mng-receipt" class="btn-link" style="flex:1;" data-i18n="btn_mng_rcpt">🧾 영수증 확인</button>
+            <button id="btn-mng-refund" class="btn-link" data-i18n="btn_mng_refund">↩️ 환불 및 취소</button>
         </div>
-        <button id="btn-mng-edit" class="btn-primary-large">주문 정보 수정하고 업데이트하기</button>
+        <button id="btn-mng-edit" class="btn-primary-large" data-i18n="btn_mng_edit">주문 정보 수정하고 업데이트하기</button>
     </div>
 
     <!-- Sheet: Product Action -->
     <div id="product-action-sheet" class="action-sheet-overlay">
         <div class="action-sheet">
-            <h3 style="margin:0 0 15px 0;">상품 관리</h3>
-            <button class="action-btn" id="btn-action-add">➕ 아래에 새 상품 추가</button>
-            <button class="action-btn" id="btn-action-copy">📋 이 상품 복사하기</button>
-            <button class="action-btn danger" id="btn-action-delete">🗑️ 삭제하기</button>
-            <button class="action-btn" id="btn-action-cancel" style="justify-content:center; color:#64748b;">취소</button>
+            <h3 style="margin:0 0 15px 0;" data-i18n="title_prod_mng">상품 관리</h3>
+            <button class="action-btn" id="btn-action-add" data-i18n="btn_act_add">➕ 아래에 새 상품 추가</button>
+            <button class="action-btn" id="btn-action-copy" data-i18n="btn_act_copy">📋 이 상품 복사하기</button>
+            <button class="action-btn danger" id="btn-action-delete" data-i18n="btn_act_del">🗑️ 삭제하기</button>
+            <button class="action-btn" id="btn-action-cancel" data-i18n="btn_act_cancel"
+                style="justify-content:center; color:#64748b;">취소</button>
         </div>
     </div>
 
@@ -421,7 +432,8 @@
         <input type="password" id="auth-code"
             style="padding:15px; border:1px solid #ccc; border-radius:12px; font-size:24px; text-align:center; width:200px; margin-bottom:20px;"
             placeholder="PIN">
-        <button id="btn-auth-confirm" class="btn-primary-large" style="width:200px;">접속하기</button>
+        <button id="btn-auth-confirm" class="btn-primary-large" style="width:200px;"
+            data-i18n="btn_auth_enter">접속하기</button>
     </div>
 
     <!-- Components -->

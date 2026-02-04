@@ -16,7 +16,7 @@ function navigate(targetId) {
 }
 
 function renderDashboard() {
-    let profit = 0, revenue = 0, cost = 0;
+    let profit = 0, revenue = 0, cost = 0, pendingSettle = 0;
     const f = STATE.dashFilters;
     const filtered = STATE.orders.filter(o => {
         if (o.status === 'Cancelled') return false;
@@ -31,7 +31,44 @@ function renderDashboard() {
         if (o.status === 'Pending') counts.pending++;
         if (o.status === 'Ordered') counts.ordered++;
         if (o.status === 'Shipped_to_HK') counts.shipped++;
-        if (o.status === 'Completed' || o.status === 'Settled') counts.completed++;
+        if (o.status === 'Completed') counts.completed++; // Exclude Settled
+
+        // Pending Settlement Amount (Completed Status)
+        if (o.status === 'Completed') {
+            const p = Number(o.price_hkd) || 0;
+            const c = Number(o.cost_krw) || 0;
+            const s = Number(o.ship_fee_krw) || 0;
+            const l = Number(o.local_fee_hkd) || 0;
+            if (STATE.currencyMode === 'KRW') {
+                pendingSettle += (p * STATE.exchangeRate) - (c + (s * STATE.exchangeRate) + (l * STATE.exchangeRate));
+            } else {
+                pendingSettle += p - (c / STATE.exchangeRate) - s - l;
+            }
+        }
+
+        if (o.status === 'Settled' || o.status === 'Completed') { // Revenue/Cost includes both or just settled?
+            // Usually Revenue/Cost should reflect "Sales" regardless of settlement status?
+            // Existing code only summed Revenue/Cost for 'Settled'. 
+            // Logic in lines 36-39 was: 
+            /*
+            if (o.status === 'Settled') {
+                revenue += p; 
+                cost += c;
+                profit += ...
+            }
+            */
+            // I will Keep Revenue/Cost/Profit ONLY for Settled as per original logic, 
+            // but I need to make sure I don't break Revenue/Cost numbers if they wanted 'Completed' included.
+            // Original code: if (o.status === 'Settled') -> Calc Profit/Rev/Cost.
+            // Wait, looking at original code: 
+            // line 36: if (o.status === 'Settled') { ... }
+            // So Revenue/Cost/Profit were ONLY calculated for Settled items.
+
+            // BUT, wait. If 'Completed' items are not 'Settled', they don't count towards Revenue?
+            // That seems correct for "Realized" stats.
+            // So I will stick to: Profit/Rev/Cost -> Settled Only.
+            // Pending Settle -> Completed Only.
+        }
 
         if (o.status === 'Settled') {
             const p = Number(o.price_hkd) || 0;
@@ -49,6 +86,7 @@ function renderDashboard() {
     });
 
     dom.statProfit.textContent = Math.round(profit).toLocaleString();
+    if (dom.statPendingSettle) dom.statPendingSettle.textContent = Math.round(pendingSettle).toLocaleString();
     dom.statRevenue.textContent = revenue.toLocaleString();
     dom.statCost.textContent = Math.round(cost).toLocaleString();
 

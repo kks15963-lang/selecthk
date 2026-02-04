@@ -15,6 +15,7 @@ function initDom() {
         // Dashboard
         statRevenue: document.getElementById('stat-revenue'),
         statProfit: document.getElementById('stat-profit'),
+        statPendingSettle: document.getElementById('stat-pending-settle'),
         statCost: document.getElementById('stat-cost'),
         badges: {
             pending: document.getElementById('badge-pending'),
