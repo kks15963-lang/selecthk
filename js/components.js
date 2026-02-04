@@ -116,14 +116,30 @@ function addProductRow(data = null) {
     const inpOpt = row.querySelector('.inp-option');
     const boxOpt = row.querySelector('.inp-option + .suggestion-box');
 
-    setupAutocomplete(inpProd, boxProd, 'product_name');
+    setupAutocomplete(inpProd, boxProd, 'product_name', null, (selectedProduct) => {
+        // Product Intelligence: Auto-fill Price and Option from most recent order
+        const recent = STATE.orders
+            .filter(o => o.product_name === selectedProduct)
+            .sort((a, b) => b.order_date.localeCompare(a.order_date))[0];
+
+        if (recent) {
+            row.querySelector('.inp-price').value = recent.price_hkd || '';
+            row.querySelector('.inp-option').value = recent.option || '';
+            // flash effect to indicate auto-fill
+            row.querySelectorAll('input').forEach(i => {
+                i.style.transition = 'background 0.3s';
+                i.style.background = '#dcfce7';
+                setTimeout(() => i.style.background = '', 500);
+            });
+        }
+    });
     setupAutocomplete(inpOpt, boxOpt, 'option', () => inpProd.value.trim());
 
     bindRowActions(row);
     dom.form.container.appendChild(row);
 }
 
-function setupAutocomplete(input, box, key, filterFn = null) {
+function setupAutocomplete(input, box, key, filterFn = null, onSelect = null) {
     input.addEventListener('input', () => {
         const val = input.value.trim().toLowerCase();
         if (!val) { box.classList.remove('active'); return; }
@@ -148,8 +164,10 @@ function setupAutocomplete(input, box, key, filterFn = null) {
 
             box.querySelectorAll('.suggestion-item').forEach((item, i) => {
                 item.onclick = () => {
-                    input.value = matches[i];
+                    const selectedValue = matches[i];
+                    input.value = selectedValue;
                     box.classList.remove('active');
+                    if (onSelect) onSelect(selectedValue);
                 };
             });
             box.classList.add('active');

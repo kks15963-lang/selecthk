@@ -41,6 +41,26 @@ function setupEvents() {
     dom.form.btnSave.onclick = saveOrder;
     dom.form.btnClose.onclick = () => navigate('view-list');
 
+    dom.form.btnSave.onclick = saveOrder;
+    dom.form.btnClose.onclick = () => navigate('view-list');
+
+    // Customer Intelligence: Auto-fill Address
+    const inpCust = document.getElementById('inp-customer');
+    if (inpCust) {
+        inpCust.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (!val) return;
+            // Find most recent order for this customer
+            const recent = STATE.orders
+                .filter(o => o.customer_id === val)
+                .sort((a, b) => b.order_date.localeCompare(a.order_date))[0];
+
+            if (recent && recent.address) {
+                document.getElementById('inp-address').value = recent.address;
+            }
+        });
+    }
+
     // Filters
     const bindDashDate = (id, key) => {
         const el = document.getElementById(id);
@@ -149,10 +169,10 @@ function setupEvents() {
 
 
     // Settings
-    document.getElementById('btn-lang-ko').onclick = () => { STATE.lang = 'ko'; renderDashboard(); };
-    document.getElementById('btn-lang-cn').onclick = () => { STATE.lang = 'cn'; renderDashboard(); };
-    document.getElementById('btn-curr-krw').onclick = () => { STATE.currencyMode = 'KRW'; renderDashboard(); };
-    document.getElementById('btn-curr-hkd').onclick = () => { STATE.currencyMode = 'HKD'; renderDashboard(); };
+    document.getElementById('btn-lang-ko').onclick = () => setLanguage('ko');
+    document.getElementById('btn-lang-cn').onclick = () => setLanguage('cn');
+    document.getElementById('btn-curr-krw').onclick = () => setCurrency('KRW');
+    document.getElementById('btn-curr-hkd').onclick = () => setCurrency('HKD');
     document.getElementById('btn-refresh-manual').onclick = loadData;
 
     // Global Dismiss
@@ -227,4 +247,32 @@ function setListDate(days) {
     document.getElementById('filter-date-start').value = STATE.filters.startDate;
     document.getElementById('filter-date-end').value = STATE.filters.endDate;
     renderOrderList();
+}
+
+// Global helper for Customer Intelligence
+window.updateCustomerSuggestions = function () {
+    const dl = document.getElementById('dl-customers');
+    if (!dl) return;
+    const unique = [...new Set(STATE.orders.map(o => o.customer_id).filter(Boolean))].sort();
+    dl.innerHTML = unique.map(c => `<option value="${c}"></option>`).join('');
+};
+
+function setLanguage(lang) {
+    STATE.lang = lang;
+    document.getElementById('btn-lang-ko').classList.toggle('active', lang === 'ko');
+    document.getElementById('btn-lang-cn').classList.toggle('active', lang === 'cn');
+    renderDashboard();
+
+    // Update labels if needed
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (TRANS[lang][key]) el.textContent = TRANS[lang][key];
+    });
+}
+
+function setCurrency(curr) {
+    STATE.currencyMode = curr;
+    document.getElementById('btn-curr-krw').classList.toggle('active', curr === 'KRW');
+    document.getElementById('btn-curr-hkd').classList.toggle('active', curr === 'HKD');
+    renderDashboard();
 }

@@ -13,6 +13,7 @@ async function loadData() {
             STATE.orders = res.data || res.orders || [];
             dom.authOverlay.style.display = 'none';
             renderDashboard();
+            if (window.updateCustomerSuggestions) window.updateCustomerSuggestions();
             if (STATE.selectedTab !== 'view-dashboard') navigate(STATE.selectedTab);
         } else {
             alert("로그인 실패: " + (res.message || "서버 응답 오류"));
