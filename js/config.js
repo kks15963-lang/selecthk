@@ -1,5 +1,5 @@
 const CONFIG = {
-    API_URL: "https://script.google.com/macros/s/AKfycbytUVQ8GJHXEkN5hCZKZsNmL9KWgk-hOD4AOTf1LQAxts2r2uUbGrtSQnnpa1hYVazFbg/exec",
+    API_URL: "https://script.google.com/macros/s/AKfycbwqh1kdJNq1EJajqe1EOXocEKcnZHrr0M6-FdvqxOGSwIPsrgoWzW33biprWOEkWkhxdw/exec",
     EXCHANGE_API: "https://open.er-api.com/v6/latest/HKD",
     IS_MOCK: false,
     DEFAULT_RATE: 175

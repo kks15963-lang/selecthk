@@ -204,8 +204,10 @@ function createOrders(dataList) {
     const timestamp = new Date();
     const dateStr = Utilities.formatDate(timestamp, 'GMT+9', 'yyyyMMdd');
 
+    const baseId = 'ORD-' + dateStr + '-' + Math.floor(Math.random() * 10000); // Shared ID for the Batch
+
     dataList.forEach((data, index) => {
-        const newId = 'ORD-' + dateStr + '-' + Math.floor(Math.random() * 10000) + index;
+        const newId = baseId; // key change: use same ID
         createdIds.push(newId);
         rows.push([
             newId,
@@ -275,27 +277,30 @@ function updateOrders(dataList) {
     const values = sheet.getDataRange().getValues();
     const idMap = new Map();
 
-    // Map ID -> Row Index (0-based)
+    // Map ID -> Array of Row Indices (0-based)
     for (let i = 1; i < values.length; i++) {
-        idMap.set(values[i][0], i);
+        const id = values[i][0];
+        if (!idMap.has(id)) idMap.set(id, []);
+        idMap.get(id).push(i);
     }
 
     dataList.forEach(data => {
-        const rowIndex = idMap.get(data.order_id);
-        if (rowIndex !== undefined) {
-            const r = rowIndex + 1; // 1-based
+        const indices = idMap.get(data.order_id);
+        if (indices) {
+            indices.forEach(rowIndex => {
+                const r = rowIndex + 1; // 1-based
 
-            // Batch updates primarily used for:
-            // 1. ALL updates should check relevant fields
-
-            updateCell(sheet, r, 4, data.address);    // D (Address) - ADDED
-            updateCell(sheet, r, 8, data.status);     // H
-            updateCell(sheet, r, 10, data.cost_krw);  // J
-            updateCell(sheet, r, 12, data.remarks);   // L (Remarks)
-            updateCell(sheet, r, 14, data.ship_fee_krw); // N
-            updateCell(sheet, r, 15, data.local_fee_hkd); // O
-            updateCell(sheet, r, 16, data.tracking_no);   // P
-            updateCell(sheet, r, 17, data.delivery_method); // Q
+                // Only update provided fields logic
+                // Using updateCell helper which checks for undefined
+                updateCell(sheet, r, 4, data.address);    // D
+                updateCell(sheet, r, 8, data.status);     // H
+                updateCell(sheet, r, 10, data.cost_krw);  // J
+                updateCell(sheet, r, 12, data.remarks);   // L
+                updateCell(sheet, r, 14, data.ship_fee_krw); // N
+                updateCell(sheet, r, 15, data.local_fee_hkd); // O
+                updateCell(sheet, r, 16, data.tracking_no);   // P
+                updateCell(sheet, r, 17, data.delivery_method); // Q
+            });
         }
     });
 
@@ -305,11 +310,18 @@ function updateOrders(dataList) {
 function deleteOrder(orderId) {
     const sheet = getSheet();
     const data = sheet.getDataRange().getValues();
-    const rowIndex = data.findIndex(r => r[0] == orderId);
+    let count = 0;
 
-    if (rowIndex === -1) throw new Error("Not found");
-    sheet.deleteRow(rowIndex + 1);
-    return { success: true };
+    // Loop backwards to safely delete multiple rows
+    for (let i = data.length - 1; i >= 1; i--) {
+        if (data[i][0] == orderId) {
+            sheet.deleteRow(i + 1);
+            count++;
+        }
+    }
+
+    if (count > 0) return { success: true, count };
+    return { error: 'Order not found' };
 }
 
 // Helper to update cell only if value defined
