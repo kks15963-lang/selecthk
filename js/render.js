@@ -40,9 +40,9 @@ function renderDashboard() {
             const s = Number(o.ship_fee_krw) || 0;
             const l = Number(o.local_fee_hkd) || 0;
             if (STATE.currencyMode === 'KRW') {
-                pendingSettle += (p * STATE.exchangeRate) - (c + (s * STATE.exchangeRate) + (l * STATE.exchangeRate));
+                pendingSettle += (p * STATE.exchangeRate) - c - s - (l * STATE.exchangeRate);
             } else {
-                pendingSettle += p - (c / STATE.exchangeRate) - s - l;
+                pendingSettle += p - (c / STATE.exchangeRate) - (s / STATE.exchangeRate) - l;
             }
         }
 
@@ -76,11 +76,13 @@ function renderDashboard() {
             const s = Number(o.ship_fee_krw) || 0;
             const l = Number(o.local_fee_hkd) || 0;
             revenue += p;
-            cost += c;
+            cost += c; // Note: This sums Cost(KRW).
             if (STATE.currencyMode === 'KRW') {
-                profit += (p * STATE.exchangeRate) - (c + (s * STATE.exchangeRate) + (l * STATE.exchangeRate));
+                // Correct Logic: (HKD*Rate) - KRW - KRW - (HKD*Rate)
+                profit += (p * STATE.exchangeRate) - c - s - (l * STATE.exchangeRate);
             } else {
-                profit += p - (c / STATE.exchangeRate) - s - l;
+                // Correct Logic: HKD - (KRW/Rate) - (KRW/Rate) - HKD
+                profit += p - (c / STATE.exchangeRate) - (s / STATE.exchangeRate) - l;
             }
         }
     });

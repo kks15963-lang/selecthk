@@ -83,7 +83,7 @@ function openManagementMenu(order) {
         btnDelivery?.classList.add('hidden');
         btnEdit?.classList.add('hidden');
         btnRefund?.classList.add('hidden');
-        btnDelete?.classList.add('hidden');
+        btnDelete?.classList.remove('hidden');
         btnReceipt?.classList.remove('hidden');
     } else {
         btnDelivery?.classList.add('hidden');
