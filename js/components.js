@@ -5,9 +5,9 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
     const el = document.createElement('div');
     el.className = `card ${isSelected ? 'selected-glow' : ''}`;
 
-    const statusText = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5)
-        ? "배송정보 입력완료"
-        : (TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status);
+    const isEntered = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5);
+    const statusText = isEntered ? "배송정보 입력완료" : (TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status);
+    const badgeClass = isEntered ? 'completed' : o.status.toLowerCase();
 
     let warning = '';
     if (o.status === 'Shipped_to_HK' && (!o.address || o.address.length < 5)) {
@@ -17,7 +17,7 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
     el.innerHTML = `
         <div class="card-header">
             <span class="card-title">${o.product_name}</span>
-            <span class="badge ${o.status.toLowerCase()}">${statusText}</span>
+            <span class="badge ${badgeClass}">${statusText}</span>
         </div>
         <div class="card-subtitle" style="color:#64748b; font-size:13px;">${o.customer_id} | ${o.option} (x${o.qty})</div>
         ${warning}
