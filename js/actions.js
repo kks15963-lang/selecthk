@@ -79,11 +79,19 @@ function openManagementMenu(order) {
     }
     const { btnDelivery, btnReceipt, btnRefund, btnEdit, btnDelete } = getActionButtons();
 
-    btnDelivery?.classList.add('hidden');
-    btnReceipt?.classList.remove('hidden');
-    btnRefund?.classList.remove('hidden');
-    btnEdit?.classList.remove('hidden');
-    btnDelete?.classList.remove('hidden');
+    if (order.status === 'Settled') {
+        btnDelivery?.classList.add('hidden');
+        btnEdit?.classList.add('hidden');
+        btnRefund?.classList.add('hidden');
+        btnDelete?.classList.add('hidden');
+        btnReceipt?.classList.remove('hidden');
+    } else {
+        btnDelivery?.classList.add('hidden');
+        btnReceipt?.classList.remove('hidden');
+        btnRefund?.classList.remove('hidden');
+        btnEdit?.classList.remove('hidden');
+        btnDelete?.classList.remove('hidden');
+    }
 
     dom.mngSheet.classList.remove('hidden');
 }
@@ -178,6 +186,7 @@ async function saveHongKongDelivery() {
                 tracking_no: tracking || o.tracking_no || '',
                 local_fee_hkd: newFee,
                 status: 'Shipped_to_HK',
+                delivery_method: dom.selDeliveryMethod.value,
                 remarks: (o.remarks || '') + (tracking && !(o.remarks || '').includes(tracking) ? ` [TC: ${tracking}]` : '')
             };
         });
@@ -312,34 +321,23 @@ async function saveBulkHongKongDelivery() {
 async function saveBulkSettlement() {
     if (STATE.selectedFinanceIds.size === 0) return alert(t('msg_select_settle'));
 
-    // 1. Calculate Expected Profit (Actual Amount)
+    // 1. Calculate Required Cost (Product Cost + ship_fee_krw)
     const ids = Array.from(STATE.selectedFinanceIds);
     const selectedOrders = STATE.orders.filter(o => ids.includes(o.order_id));
 
-    let totalProfit = 0;
+    let totalCostKrw = 0;
     selectedOrders.forEach(o => {
-        const p = Number(o.price_hkd) || 0;
         const c_krw = Number(o.cost_krw) || 0;
-        const s = Number(o.ship_fee_krw) || 0;
-        const l = Number(o.local_fee_hkd) || 0;
-
-        // Profit Calculation Logic (matches renderDashboard)
-        // Profit = (HKD * Rate) - KRW_Cost - KRW_Ship - (HKD_Local * Rate)
-        if (STATE.exchangeRate) {
-            const profitKrw = (p * STATE.exchangeRate) - c_krw - s - (l * STATE.exchangeRate);
-            totalProfit += profitKrw;
-        } else {
-            // Fallback if no rate? Should ideally exist.
-            // Just sum up raw numbers? No, that mixes currencies.
-            // Assumption: Exchange Rate always exists. If not, maybe fetch or alert?
-        }
+        const s_krw = Number(o.ship_fee_krw) || 0;
+        totalCostKrw += (c_krw + s_krw);
     });
 
-    // 2. Get User Input
+    // 2. Get User Input (Total Deposit Amount)
     const inputTotal = Number(dom.inpSettleTotal.value) || 0;
 
-    // 3. Calculate Balance
-    const balance = inputTotal - totalProfit;
+    // 3. Calculate Balance (Remaining Profit/Excess)
+    // Balance = Deposit - Cost
+    const balance = inputTotal - totalCostKrw;
 
     // 4. Create Settlement Record
     showLoading();
@@ -350,7 +348,7 @@ async function saveBulkSettlement() {
             auth: STATE.auth,
             data: {
                 total_input_krw: inputTotal,
-                actual_amount_krw: Math.round(totalProfit),
+                actual_amount_krw: Math.round(totalCostKrw),
                 balance_krw: Math.round(balance),
                 related_order_ids: ids
             }
@@ -361,7 +359,7 @@ async function saveBulkSettlement() {
         await sendBatchUpdate(updates);
 
         // C. Show Result
-        alert(`${t('msg_settle_done')}\n\n[ 정산 요약 ]\n입금액: ${inputTotal.toLocaleString()}원\n실제수익: ${Math.round(totalProfit).toLocaleString()}원\n----------------\n잔액 (Balance): ${Math.round(balance).toLocaleString()}원`);
+        alert(`${t('msg_settle_done')}\n\n[ 정산 요약 ]\n입금액: ${inputTotal.toLocaleString()}원\n물건값+배송비: ${Math.round(totalCostKrw).toLocaleString()}원\n----------------\n남은 금액 (Balance): ${Math.round(balance).toLocaleString()}원`);
 
         STATE.selectedFinanceIds.clear();
         dom.modals.settlement.classList.add('hidden');

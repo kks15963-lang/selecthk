@@ -27,6 +27,21 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
         </div>
     `;
 
+    if (o.status === 'Settled') {
+        el.innerHTML += `
+            <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0; font-size:12px; color:#475569;">
+                <div style="font-weight:bold; margin-bottom:4px;">📜 정산 및 배송 이력 (History)</div>
+                <div style="display:flex; justify-content:space-between;"><span>배송방법:</span> <span>${o.delivery_method || '-'}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>송장번호:</span> <span>${o.tracking_no || '-'}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>배송주소:</span> <span style="text-align:right; max-width:60%;">${o.address || '-'}</span></div>
+                <div style="margin:4px 0; border-bottom:1px solid #f1f5f9;"></div>
+                <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>매입가(KRW):</span> <span>-${Number(o.cost_krw).toLocaleString()}</span></div>
+                <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>배대지비용:</span> <span>-${Number(o.ship_fee_krw).toLocaleString()}</span></div>
+                <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>현지배송비:</span> <span>HKD -${Number(o.local_fee_hkd).toLocaleString()}</span></div>
+            </div>
+        `;
+    }
+
     let isLongPress = false;
 
     el.onclick = (e) => {
