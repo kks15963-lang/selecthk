@@ -560,7 +560,7 @@ function renderPurchaseList() {
     const items = STATE.orders.filter(o => o.status === 'Pending');
 
     const batchBtn = document.getElementById('action-bar-purchase');
-    if (items.length > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedBatchIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderPurchaseList, (o) => {
         const has = STATE.selectedBatchIds.has(o.order_id);
@@ -578,7 +578,7 @@ function renderKoreaList() {
     const items = STATE.orders.filter(o => o.status === 'Ordered');
 
     const batchBtn = document.getElementById('action-bar-korea');
-    if (items.length > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedKoreaIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderKoreaList, (o) => {
         const has = STATE.selectedKoreaIds.has(o.order_id);
@@ -596,7 +596,7 @@ function renderHongKongList() {
     const items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
 
     const batchBtn = document.getElementById('action-bar-hongkong');
-    if (items.length > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedHkIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderHongKongList, (o) => {
         const has = STATE.selectedHkIds.has(o.customer_id);
@@ -612,7 +612,7 @@ function renderFinanceList() {
     const items = STATE.orders.filter(o => o.status === 'Completed');
 
     const batchBtn = document.getElementById('action-bar-finance');
-    if (items.length > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
+    if (STATE.selectedFinanceIds.size > 0) batchBtn.classList.remove('hidden'); else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderFinanceList, (o) => {
         const has = STATE.selectedFinanceIds.has(o.order_id);
