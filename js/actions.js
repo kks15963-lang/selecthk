@@ -311,15 +311,65 @@ async function saveBulkHongKongDelivery() {
 
 async function saveBulkSettlement() {
     if (STATE.selectedFinanceIds.size === 0) return alert(t('msg_select_settle'));
-    const updates = Array.from(STATE.selectedFinanceIds).map(id => ({ order_id: id, status: 'Settled' }));
+
+    // 1. Calculate Expected Profit (Actual Amount)
+    const ids = Array.from(STATE.selectedFinanceIds);
+    const selectedOrders = STATE.orders.filter(o => ids.includes(o.order_id));
+
+    let totalProfit = 0;
+    selectedOrders.forEach(o => {
+        const p = Number(o.price_hkd) || 0;
+        const c_krw = Number(o.cost_krw) || 0;
+        const s = Number(o.ship_fee_krw) || 0;
+        const l = Number(o.local_fee_hkd) || 0;
+
+        // Profit Calculation Logic (matches renderDashboard)
+        // Profit = (HKD * Rate) - KRW_Cost - KRW_Ship - (HKD_Local * Rate)
+        if (STATE.exchangeRate) {
+            const profitKrw = (p * STATE.exchangeRate) - c_krw - s - (l * STATE.exchangeRate);
+            totalProfit += profitKrw;
+        } else {
+            // Fallback if no rate? Should ideally exist.
+            // Just sum up raw numbers? No, that mixes currencies.
+            // Assumption: Exchange Rate always exists. If not, maybe fetch or alert?
+        }
+    });
+
+    // 2. Get User Input
+    const inputTotal = Number(dom.inpSettleTotal.value) || 0;
+
+    // 3. Calculate Balance
+    const balance = inputTotal - totalProfit;
+
+    // 4. Create Settlement Record
     showLoading();
     try {
+        // A. Save Settlement History
+        await sendData({
+            action: 'createSettlement',
+            auth: STATE.auth,
+            data: {
+                total_input_krw: inputTotal,
+                actual_amount_krw: Math.round(totalProfit),
+                balance_krw: Math.round(balance),
+                related_order_ids: ids
+            }
+        });
+
+        // B. Update Orders Status
+        const updates = ids.map(id => ({ order_id: id, status: 'Settled' }));
         await sendBatchUpdate(updates);
-        showToast(t('msg_settle_done'));
+
+        // C. Show Result
+        alert(`${t('msg_settle_done')}\n\n[ 정산 요약 ]\n입금액: ${inputTotal.toLocaleString()}원\n실제수익: ${Math.round(totalProfit).toLocaleString()}원\n----------------\n잔액 (Balance): ${Math.round(balance).toLocaleString()}원`);
+
         STATE.selectedFinanceIds.clear();
         dom.modals.settlement.classList.add('hidden');
         loadData();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+        alert(t('msg_error') + ': ' + e.message);
+    }
     finally { hideLoading(); }
 }
 
