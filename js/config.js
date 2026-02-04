@@ -29,6 +29,18 @@ const TRANS = {
         lbl_qty: "수량", lbl_price: "단가 (HKD)", lbl_option: "옵션/사이즈", lbl_remarks: "비고",
         btn_close: "작성 취소하고 돌아가기", btn_save: "주문 정보 저장 완료",
 
+        // Card & List
+        status_entered: "배송정보 입력완료",
+        warn_address: "⚠️ 배송 정보/주소 필요",
+        lbl_recent_settle: "최근 정산 내역", lbl_per_page: "개씩",
+        lbl_sell_price: "판매가", lbl_buy_cost: "매입가", lbl_ship_cost: "배대지", lbl_local_cost: "현지배송",
+
+        // Batch Buttons (Dynamic)
+        btn_batch_purchase: "선택한 항목 매입 확정하기",
+        btn_batch_korea: "선택한 항목 홍콩으로 발송하기",
+        btn_batch_hk: "선택한 항목 배송 완료 처리",
+        btn_batch_settle: "선택한 항목 수익 정산하기",
+
         // Modals & Sheets
         lbl_krw: "매입가 입력", ph_cost: "KRW 0", btn_save_cost: "매입가 저장하고 완료하기",
         lbl_ship_fee: "배대지 비용 입력", btn_ship_save: "배송비 저장하고 발송 처리하기",
@@ -63,6 +75,18 @@ const TRANS = {
         lbl_date: "日期", lbl_customer: "客户名", lbl_address: "地址", lbl_product: "商品名",
         lbl_qty: "数量", lbl_price: "单价 (HKD)", lbl_option: "选项/尺码", lbl_remarks: "备注",
         btn_close: "取消并返回", btn_save: "保存订单",
+
+        // Card & List
+        status_entered: "配送信息已录入",
+        warn_address: "⚠️ 需要填写地址/配送信息",
+        lbl_recent_settle: "最近结算记录", lbl_per_page: "条/页",
+        lbl_sell_price: "销售价", lbl_buy_cost: "采购价", lbl_ship_cost: "集运费", lbl_local_cost: "派送费",
+
+        // Batch Buttons (Dynamic)
+        btn_batch_purchase: "确认采购选中项",
+        btn_batch_korea: "标记发货选中项",
+        btn_batch_hk: "处理派送选中项",
+        btn_batch_settle: "结算选中项",
 
         // Modals & Sheets
         lbl_krw: "输入采购成本", ph_cost: "韩元金额", btn_save_cost: "保存并完成采购",

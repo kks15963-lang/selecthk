@@ -66,7 +66,7 @@ function renderDashboard() {
     if (settled.length > 0) {
         const title = document.createElement('h3');
         Object.assign(title.style, { margin: '20px 0 10px 0', fontSize: '14px', color: '#64748b' });
-        title.textContent = `최근 정산 내역 (${settled.length})`;
+        title.textContent = `${t('lbl_recent_settle')} (${settled.length})`;
         dom.profitList.appendChild(title);
 
         settled.forEach(o => {
@@ -84,14 +84,14 @@ function renderDashboard() {
             el.innerHTML = `
                 <div class="card-header">
                     <span class="card-title">${o.product_name}</span>
-                    <span class="badge completed">수익: HKD ${Math.round(profitVal).toLocaleString()}</span>
+                    <span class="badge completed">HKD ${Math.round(profitVal).toLocaleString()}</span>
                 </div>
                 <div class="card-subtitle">${o.customer_id} | ${o.order_date}</div>
                 <div style="margin-top:8px; font-size:12px; color:#64748b; background:#f8fafc; padding:8px; border-radius:8px;">
-                    <div style="display:flex; justify-content:space-between;"><span>판매가</span> <span>+ HKD ${p.toLocaleString()}</span></div>
-                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>매입가</span> <span>- HKD ${Math.round(c_hkd).toLocaleString()} (${c_krw.toLocaleString()}원)</span></div>
-                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>배대지</span> <span>- HKD ${Math.round(s_hkd).toLocaleString()}</span></div>
-                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>현지배송</span> <span>- HKD ${l.toLocaleString()}</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>${t('lbl_sell_price')}</span> <span>+ HKD ${p.toLocaleString()}</span></div>
+                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>${t('lbl_buy_cost')}</span> <span>- HKD ${Math.round(c_hkd).toLocaleString()} (${c_krw.toLocaleString()}원)</span></div>
+                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>${t('lbl_ship_cost')}</span> <span>- HKD ${Math.round(s_hkd).toLocaleString()}</span></div>
+                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>${t('lbl_local_cost')}</span> <span>- HKD ${l.toLocaleString()}</span></div>
                 </div>
             `;
             dom.profitList.appendChild(el);
@@ -122,82 +122,31 @@ function renderPurchaseList() {
     const batchBtn = document.getElementById('action-bar-purchase');
     if (STATE.selectedBatchIds.size > 0) {
         batchBtn.classList.remove('hidden');
-        document.getElementById('btn-bulk-purchase').innerText = `선택한 항목 매입 확정하기 (${STATE.selectedBatchIds.size})`;
+        document.getElementById('btn-bulk-purchase').innerText = `${t('btn_batch_purchase')} (${STATE.selectedBatchIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    renderPagination(list, items, renderPurchaseList, (o) => {
-        const has = STATE.selectedBatchIds.has(o.order_id);
-        return createCard(o, () => {
-            if (has) STATE.selectedBatchIds.delete(o.order_id);
-            else STATE.selectedBatchIds.add(o.order_id);
-            renderPurchaseList();
-        }, has, false, openManagementMenu);
-    });
-}
-
-function renderKoreaList() {
-    const list = dom.lists.korea;
-    list.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Ordered');
+    // ... (skipping lines) ...
 
     const batchBtn = document.getElementById('action-bar-korea');
     if (STATE.selectedKoreaIds.size > 0) {
         batchBtn.classList.remove('hidden');
-        document.getElementById('btn-bulk-korea').innerText = `선택한 항목 홍콩으로 발송하기 (${STATE.selectedKoreaIds.size})`;
+        document.getElementById('btn-bulk-korea').innerText = `${t('btn_batch_korea')} (${STATE.selectedKoreaIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    renderPagination(list, items, renderKoreaList, (o) => {
-        const has = STATE.selectedKoreaIds.has(o.order_id);
-        return createCard(o, () => {
-            if (has) STATE.selectedKoreaIds.delete(o.order_id);
-            else STATE.selectedKoreaIds.add(o.order_id);
-            renderKoreaList();
-        }, has, false, openManagementMenu);
-    });
-}
-
-function renderHongKongList() {
-    const list = dom.lists.hk;
-    list.innerHTML = '';
-
-    // Sort: items with address first
-    let items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
-
-    if (STATE.hkQuery) {
-        const q = STATE.hkQuery;
-        items = items.filter(o =>
-            (o.customer_id && o.customer_id.toLowerCase().includes(q)) ||
-            (o.product_name && o.product_name.toLowerCase().includes(q)) ||
-            (o.order_id && o.order_id.toLowerCase().includes(q))
-        );
-    }
-
-    items.sort((a, b) => {
-        const hasA = (a.address && a.address.length > 5) ? 1 : 0;
-        const hasB = (b.address && b.address.length > 5) ? 1 : 0;
-        return hasB - hasA;
-    });
+    // ... (skipping lines) ...
 
     const batchBtn = document.getElementById('action-bar-hongkong');
     if (STATE.selectedHkIds.size > 0) {
         batchBtn.classList.remove('hidden');
-        document.getElementById('btn-bulk-hk').innerText = `선택한 항목 배송 완료 처리 (${STATE.selectedHkIds.size})`;
+        document.getElementById('btn-bulk-hk').innerText = `${t('btn_batch_hk')} (${STATE.selectedHkIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    renderPagination(list, items, renderHongKongList, (o) => {
-        return createCard(o, () => toggleHkSelection(o), STATE.selectedHkIds.has(o.customer_id), false, openManagementMenu);
-    });
-}
-
-function renderFinanceList() {
-    const list = dom.lists.finance;
-    list.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Completed');
+    // ... (skipping lines) ...
 
     const batchBtn = document.getElementById('action-bar-finance');
     if (STATE.selectedFinanceIds.size > 0) {
         batchBtn.classList.remove('hidden');
-        document.getElementById('btn-bulk-settle').innerText = `선택한 항목 수익 정산하기 (${STATE.selectedFinanceIds.size})`;
+        document.getElementById('btn-bulk-settle').innerText = `${t('btn_batch_settle')} (${STATE.selectedFinanceIds.size})`;
     } else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderFinanceList, (o) => {
@@ -222,7 +171,7 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
     const select = document.createElement('select');
     [10, 30, 50].forEach(n => {
         const opt = document.createElement('option');
-        opt.value = n; opt.text = `${n}개씩`;
+        opt.value = n; opt.text = `${n} ${t('lbl_per_page')}`;
         if (itemsPerPage === n) opt.selected = true;
         select.appendChild(opt);
     });

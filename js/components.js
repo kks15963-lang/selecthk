@@ -6,12 +6,12 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
     el.className = `card ${isSelected ? 'selected-glow' : ''}`;
 
     const isEntered = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5);
-    const statusText = isEntered ? "배송정보 입력완료" : (TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status);
+    const statusText = isEntered ? t('status_entered') : t(`status_${o.status.toLowerCase()}`);
     const badgeClass = isEntered ? 'completed' : o.status.toLowerCase();
 
     let warning = '';
     if (o.status === 'Shipped_to_HK' && (!o.address || o.address.length < 5)) {
-        warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">⚠️ 배송 정보/주소 필요</div>`;
+        warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">${t('warn_address')}</div>`;
     }
 
     el.innerHTML = `
