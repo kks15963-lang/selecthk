@@ -1,5 +1,5 @@
 async function attemptAuth() {
-    if (!dom.authCode.value) return showToast("인증코드를 입력하세요");
+    if (!dom.authCode.value) return showToast(t('msg_login_req'));
     showLoading();
     STATE.auth = dom.authCode.value;
     await loadData();
@@ -16,12 +16,12 @@ async function loadData() {
             if (window.updateCustomerSuggestions) window.updateCustomerSuggestions();
             if (STATE.selectedTab !== 'view-dashboard') navigate(STATE.selectedTab);
         } else {
-            alert("로그인 실패: " + (res.message || "서버 응답 오류"));
+            alert(t('msg_login_fail_prefix') + (res.message || t('msg_server_err')));
             dom.authOverlay.style.display = 'flex';
         }
     } catch (e) {
         console.error(e);
-        showToast("데이터 로드 실패: " + e.message);
+        showToast(t('msg_load_fail') + e.message);
     } finally {
         hideLoading();
     }
@@ -29,7 +29,7 @@ async function loadData() {
 
 async function saveOrder() {
     const cust = dom.form.customer.value.trim();
-    if (!cust) return alert("고객명을 입력해주세요");
+    if (!cust) return alert(t('msg_no_cust'));
 
     const rows = Array.from(dom.form.container.children);
     const orders = [];
@@ -40,7 +40,7 @@ async function saveOrder() {
         const price = r.querySelector('.inp-price').value;
         const opt = r.querySelector('.inp-option').value.trim();
 
-        if (!p || !q || Number(q) <= 0 || !opt) return alert("상품명, 수량(1이상), 옵션을 모두 입력해주세요");
+        if (!p || !q || Number(q) <= 0 || !opt) return alert(t('msg_no_prod'));
 
         orders.push({
             customer_id: cust,
@@ -57,13 +57,15 @@ async function saveOrder() {
 
     showLoading();
     try {
-        const res = await sendData({ action: 'createOrder', orders: orders });
-        if (res) {
-            alert('저장되었습니다.');
+        const res = await sendData({ action: 'createOrders', auth: STATE.auth, data: orders });
+        if (res && res.success) {
+            alert(t('msg_save_done'));
             navigate('view-list');
             loadData();
+        } else {
+            alert(t('msg_save_fail') + ": " + (res ? res.message : "Unknown Error"));
         }
-    } catch (e) { console.error(e); alert('저장 실패'); }
+    } catch (e) { console.error(e); alert(t('msg_save_fail')); }
     finally { hideLoading(); }
 }
 
@@ -100,7 +102,7 @@ function openHkDeliveryModal(mode = 'single') {
     const customerIds = Array.from(STATE.selectedHkIds);
     const relevantOrders = STATE.orders.filter(o => customerIds.includes(o.customer_id) && o.status === 'Shipped_to_HK');
 
-    if (relevantOrders.length === 0) return alert("해당 조건의 주문이 없습니다.");
+    if (relevantOrders.length === 0) return alert(t('msg_no_orders'));
 
     dom.modals.hk.dataset.mode = mode;
     dom.inpHkAddress.value = relevantOrders[0]?.address || '';
@@ -112,33 +114,40 @@ function openHkDeliveryModal(mode = 'single') {
     dom.btnSaveHk.classList.add('hidden');
 
     if (mode === 'bulk') {
-        dom.hkCustomerInfo.innerHTML = `<div style="text-align:center; font-weight:bold; margin-bottom:10px;">배송 정보 최종 확인 (${relevantOrders.length}건)</div>`;
+        dom.hkCustomerInfo.innerHTML = `<div style="text-align:center; font-weight:bold; margin-bottom:10px;">${t('lbl_ship_check')} (${relevantOrders.length}건)</div>`;
         dom.hkItemList.innerHTML = relevantOrders.map(o => `
             <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
                 <div style="font-weight:bold; font-size:13px; color:#334155;">${o.customer_id}</div>
                 <div style="font-size:12px; color:#64748b;">${o.product_name} (${o.option}) x${o.qty}</div>
                 <div style="margin-top:5px; font-size:12px;">
-                    <span style="display:block;">📍 ${o.address || '<span style="color:var(--danger)">주소 없음</span>'}</span>
-                    <span style="display:block;">📦 ${o.tracking_no || '<span style="color:#94a3b8">송장 없음</span>'}</span>
+                    <span style="display:block;">📍 ${o.address || `<span style="color:var(--danger)">${t('lbl_no_addr')}</span>`}</span>
+                    <span style="display:block;">📦 ${o.tracking_no || `<span style="color:#94a3b8">${t('lbl_no_track')}</span>`}</span>
                 </div>
             </div>
         `).join('');
         dom.btnSaveHk.classList.remove('hidden');
-        dom.btnSaveHk.innerText = "모두 배송 완료 처리 (Complete)";
+        dom.btnSaveHk.innerText = t('btn_complete_ship');
     } else {
-        dom.hkCustomerInfo.innerHTML = `<strong>${customerIds.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
+        dom.hkCustomerInfo.innerHTML = `<strong>${customerIds.join(', ')}</strong><br>${t('lbl_total')} ${relevantOrders.length}${t('lbl_items')}`;
         dom.hkItemList.innerHTML = relevantOrders.map(o => `<div>- ${o.product_name} (${o.option})</div>`).join('');
         dom.hkInputContainer.classList.remove('hidden');
         dom.btnSaveHk.classList.remove('hidden');
-        dom.btnSaveHk.innerText = "배송 정보 저장";
+        dom.btnSaveHk.innerText = t('btn_hk_save');
     }
     dom.modals.hk.classList.remove('hidden');
+}
+
+dom.modals.hk.classList.remove('hidden');
+}
+
+function saveBulkHongKongDelivery() {
+    openHkDeliveryModal('bulk');
 }
 
 async function saveHongKongDelivery() {
     const mode = dom.modals.hk.dataset.mode;
     const ids = Array.from(STATE.selectedHkIds);
-    if (ids.length === 0) return alert("대상 주문이 없습니다.");
+    if (ids.length === 0) return alert(t('msg_target_none'));
 
     const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
     if (relevantOrders.length === 0) return;
@@ -147,7 +156,7 @@ async function saveHongKongDelivery() {
     if (mode === 'bulk') {
         // Bulk Complete: Validates Address -> Changes Status to Completed
         if (relevantOrders.some(o => !o.address || o.address.length < 5)) {
-            return alert("배송 주소가 없는 주문이 포함되어 있습니다. 정보를 먼저 입력해주세요.");
+            return alert(t('msg_no_addr_bulk'));
         }
         updates = relevantOrders.map(o => ({ order_id: o.order_id, status: 'Completed' }));
     } else {
@@ -155,6 +164,10 @@ async function saveHongKongDelivery() {
         const address = dom.inpHkAddress.value.trim();
         const tracking = dom.inpTracking.value.trim();
         const localFee = dom.inpLocalFee.value.trim();
+
+        if (!address || !tracking || !localFee) {
+            return alert(t('msg_hk_incomplete_save'));
+        }
 
         updates = relevantOrders.map(o => {
             let newFee = o.local_fee_hkd || 0;
@@ -178,14 +191,14 @@ async function saveHongKongDelivery() {
         const res = await sendBatchUpdate(updates);
 
         if (!res || (!res.success && res.result !== 'success')) {
-            throw new Error(res ? res.message : "서버 응답 없음");
+            throw new Error(res ? res.message : "NO_RES");
         }
 
         // Reliable Strategy: Wait for Google Sheets to update, then fetch fresh data
-        showToast("서버 동기화 중... (약 3초 소요)");
+        showToast(t('msg_syncing'));
         await new Promise(r => setTimeout(r, 2500));
 
-        showToast(mode === 'bulk' ? "배송 완료 처리됨" : "정보가 업데이트 되었습니다.");
+        showToast(mode === 'bulk' ? t('msg_ship_complete') : t('msg_info_updated'));
 
         if (mode === 'bulk') {
             STATE.selectedHkIds.clear();
@@ -198,7 +211,7 @@ async function saveHongKongDelivery() {
 
     } catch (e) {
         console.error(e);
-        alert("저장 실패: " + e.message);
+        alert(t('msg_save_fail') + ": " + e.message);
     }
     finally { hideLoading(); }
 }
@@ -226,53 +239,53 @@ function openBatchModal(type) {
 
 async function savePurchaseCost() {
     const cost = dom.modalInpKrw.value;
-    if (!cost) return alert("매입가(KRW)를 입력해주세요");
-    if (STATE.selectedBatchIds.size === 0) return alert("선택된 주문이 없습니다.");
+    if (!cost) return alert(t('msg_enter_cost'));
+    if (STATE.selectedBatchIds.size === 0) return alert(t('msg_no_selection'));
     const updates = Array.from(STATE.selectedBatchIds).map(id => ({ order_id: id, cost_krw: Number(cost), status: 'Ordered' }));
     showLoading();
     try {
         await sendBatchUpdate(updates);
-        alert("매입 처리 완료");
+        alert(t('msg_purchase_done'));
         STATE.selectedBatchIds.clear();
         dom.modals.purchase.classList.add('hidden');
         loadData();
-    } catch (e) { console.error(e); alert("오류 발생"); }
+    } catch (e) { console.error(e); alert(t('msg_error')); }
     finally { hideLoading(); }
 }
 
 async function saveKoreaShipping() {
     const fee = dom.inpShipTotal.value;
-    if (!fee) return alert("배송비(HKD)를 입력해주세요");
+    if (!fee) return alert(t('msg_enter_fee'));
     const count = STATE.selectedKoreaIds.size;
-    if (count === 0) return alert("선택된 주문이 없습니다.");
+    if (count === 0) return alert(t('msg_no_selection'));
     const feePerItem = Number(fee) / count;
     const updates = Array.from(STATE.selectedKoreaIds).map(id => ({ order_id: id, ship_fee_krw: feePerItem, status: 'Shipped_to_HK' }));
     showLoading();
     try {
         await sendBatchUpdate(updates);
-        alert("발송 처리 완료");
+        alert(t('msg_send_done'));
         STATE.selectedKoreaIds.clear();
         dom.modals.korea.classList.add('hidden');
         loadData();
-    } catch (e) { console.error(e); alert("오류 발생"); }
+    } catch (e) { console.error(e); alert(t('msg_error')); }
     finally { hideLoading(); }
 }
 
 async function saveBulkHongKongDelivery() {
-    if (STATE.selectedHkIds.size === 0) return alert("배송할 고객/주문을 선택해주세요");
+    if (STATE.selectedHkIds.size === 0) return alert(t('msg_select_ship'));
     const ids = Array.from(STATE.selectedHkIds);
     const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
-    if (relevantOrders.some(o => !o.address || o.address.length < 5)) return alert("선택한 주문 중 '배송 정보'가 입력되지 않은 항목이 있습니다.\n먼저 정보를 입력해주세요.");
+    if (relevantOrders.some(o => !o.address || o.address.length < 5)) return alert(t('msg_no_addr_selection'));
     openHkDeliveryModal('bulk');
 }
 
 async function saveBulkSettlement() {
-    if (STATE.selectedFinanceIds.size === 0) return alert("정산할 주문을 선택해주세요");
+    if (STATE.selectedFinanceIds.size === 0) return alert(t('msg_select_settle'));
     const updates = Array.from(STATE.selectedFinanceIds).map(id => ({ order_id: id, status: 'Settled' }));
     showLoading();
     try {
         await sendBatchUpdate(updates);
-        showToast("정산 처리 완료되었습니다.");
+        showToast(t('msg_settle_done'));
         STATE.selectedFinanceIds.clear();
         dom.modals.settlement.classList.add('hidden');
         loadData();
@@ -295,7 +308,7 @@ function showReceipt(order) {
 
 function saveReceiptImage() {
     const paper = document.getElementById('receipt-paper');
-    if (typeof html2canvas === 'undefined') return alert("이미지 저장 라이브러리가 로드되지 않았습니다.");
+    if (typeof html2canvas === 'undefined') return alert(t('msg_no_lib'));
     showLoading();
     html2canvas(paper, { scale: 2 }).then(canvas => {
         const link = document.createElement('a');
@@ -303,10 +316,10 @@ function saveReceiptImage() {
         link.href = canvas.toDataURL();
         link.click();
         hideLoading();
-        showToast("이미지가 저장되었습니다.");
+        showToast(t('msg_img_saved'));
     }).catch(err => {
         console.error(err);
         hideLoading();
-        alert("이미지 저장 실패");
+        alert(t('msg_img_fail'));
     });
 }
