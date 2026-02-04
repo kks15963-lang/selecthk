@@ -139,19 +139,63 @@ function renderDashboard() {
     }
 }
 
+// Helper to group orders by a key
+function groupOrders(orders, keyFn) {
+    const groups = {};
+    orders.forEach(o => {
+        const key = keyFn(o);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(o);
+    });
+
+    // Convert groups to "Representative Item" with .items array attached
+    return Object.values(groups).map(group => {
+        const main = { ...group[0] }; // Clone first item as representative
+        main.items = group; // Attach all items
+        // Aggregate Qty / Price if needed for display
+        if (group.length > 1) {
+            main.product_name = `${main.product_name} ${t('lbl_and')} ${group.length - 1}${t('lbl_others')}`;
+            main.qty = group.reduce((sum, i) => sum + Number(i.qty), 0);
+            main.price_hkd = group.reduce((sum, i) => sum + Number(i.price_hkd), 0);
+            // Keep cost/shipping aggregated for display logic
+            main.cost_krw = group.reduce((sum, i) => sum + Number(i.cost_krw), 0);
+            main.ship_fee_krw = group.reduce((sum, i) => sum + Number(i.ship_fee_krw), 0);
+            main.local_fee_hkd = group.reduce((sum, i) => sum + Number(i.local_fee_hkd), 0);
+        }
+        return main;
+    });
+}
+
 function renderOrderList() {
     const list = dom.lists.all;
     list.innerHTML = '';
     const f = STATE.filters;
-    const items = STATE.orders.filter(o => {
+
+    // 1. Filter Raw Items
+    let rawItems = STATE.orders.filter(o => {
         if (f.customer && !o.customer_id.toLowerCase().includes(f.customer.toLowerCase())) return false;
         if (f.product && !o.product_name.toLowerCase().includes(f.product.toLowerCase())) return false;
         if (f.status !== 'All' && o.status !== f.status) return false;
         if (f.startDate && o.order_date < f.startDate) return false;
         if (f.endDate && o.order_date > f.endDate) return false;
         return true;
-    }).sort((a, b) => b.order_id.localeCompare(a.order_id));
-    renderPagination(list, items, renderOrderList, null, openManagementMenu);
+    });
+
+    // 2. Group Items
+    const groupedItems = groupOrders(rawItems, o => o.order_id);
+
+    // 3. Sort
+    groupedItems.sort((a, b) => b.order_id.localeCompare(a.order_id));
+
+    renderPagination(list, groupedItems, renderOrderList, null, (o) => {
+        // Handle Action Menu for Group
+        // We pass the Main Item. If logic needs to act on all items, we'll need to handle that in actions.js
+        // For now, passing the main item allows "Open Management Menu" to work.
+        // But deletion/updates needs to know it's a group. 
+        // ACTIONS.js mostly uses IDs. If they share ID, updating one might not update all if backend expects individual IDs.
+        // However, usually 'order_id' is the grouper.
+        openManagementMenu(o);
+    });
 }
 
 function renderPurchaseList() {
@@ -200,7 +244,7 @@ function renderHongKongList() {
     const list = dom.lists.hk;
     list.innerHTML = '';
 
-    // Sort: items with address first
+    // 1. Filter Raw Items
     let items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
 
     if (STATE.hkQuery) {
@@ -212,7 +256,11 @@ function renderHongKongList() {
         );
     }
 
-    items.sort((a, b) => {
+    // 2. Group Items by Customer ID (for Combined Shipping)
+    const groupedItems = groupOrders(items, o => o.customer_id);
+
+    // 3. Sort: items with address first
+    groupedItems.sort((a, b) => {
         const hasA = (a.address && a.address.length > 5) ? 1 : 0;
         const hasB = (b.address && b.address.length > 5) ? 1 : 0;
         return hasB - hasA;
@@ -224,7 +272,7 @@ function renderHongKongList() {
         document.getElementById('btn-bulk-hk').innerText = `${t('btn_batch_hk')} (${STATE.selectedHkIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    renderPagination(list, items, renderHongKongList, (o) => {
+    renderPagination(list, groupedItems, renderHongKongList, (o) => {
         return createCard(o, () => toggleHkSelection(o), STATE.selectedHkIds.has(o.customer_id), false, openManagementMenu);
     });
 }

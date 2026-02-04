@@ -41,6 +41,7 @@ const TRANS = {
         status_entered: "배송정보 입력완료",
         warn_address: "⚠️ 배송 정보/주소 필요",
         lbl_recent_settle: "최근 정산 내역", lbl_per_page: "개씩",
+        lbl_and: "외", lbl_others: "건",
         lbl_sell_price: "판매가", lbl_buy_cost: "매입가", lbl_ship_cost: "배대지", lbl_local_cost: "현지배송",
 
         // Batch Buttons (Dynamic)
@@ -136,6 +137,7 @@ const TRANS = {
         status_entered: "配送信息已录入",
         warn_address: "⚠️ 需要填写地址/配送信息",
         lbl_recent_settle: "最近结算记录", lbl_per_page: "条/页",
+        lbl_and: "及", lbl_others: "项",
         lbl_sell_price: "销售价", lbl_buy_cost: "采购价", lbl_ship_cost: "集运费", lbl_local_cost: "派送费",
 
         // Batch Buttons (Dynamic)
