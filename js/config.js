@@ -101,3 +101,9 @@ const TRANS = {
         msg_refresh: "数据已更新"
     }
 };
+
+// Global Translation Helper
+window.t = function (key) {
+    const lang = STATE.lang || 'ko';
+    return (TRANS[lang] && TRANS[lang][key]) || (TRANS['ko'] && TRANS['ko'][key]) || key;
+};

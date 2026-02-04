@@ -125,7 +125,20 @@ function renderPurchaseList() {
         document.getElementById('btn-bulk-purchase').innerText = `${t('btn_batch_purchase')} (${STATE.selectedBatchIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    // ... (skipping lines) ...
+    renderPagination(list, items, renderPurchaseList, (o) => {
+        const has = STATE.selectedBatchIds.has(o.order_id);
+        return createCard(o, () => {
+            if (has) STATE.selectedBatchIds.delete(o.order_id);
+            else STATE.selectedBatchIds.add(o.order_id);
+            renderPurchaseList();
+        }, has, false, openManagementMenu);
+    });
+}
+
+function renderKoreaList() {
+    const list = dom.lists.korea;
+    list.innerHTML = '';
+    const items = STATE.orders.filter(o => o.status === 'Ordered');
 
     const batchBtn = document.getElementById('action-bar-korea');
     if (STATE.selectedKoreaIds.size > 0) {
@@ -133,7 +146,37 @@ function renderPurchaseList() {
         document.getElementById('btn-bulk-korea').innerText = `${t('btn_batch_korea')} (${STATE.selectedKoreaIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    // ... (skipping lines) ...
+    renderPagination(list, items, renderKoreaList, (o) => {
+        const has = STATE.selectedKoreaIds.has(o.order_id);
+        return createCard(o, () => {
+            if (has) STATE.selectedKoreaIds.delete(o.order_id);
+            else STATE.selectedKoreaIds.add(o.order_id);
+            renderKoreaList();
+        }, has, false, openManagementMenu);
+    });
+}
+
+function renderHongKongList() {
+    const list = dom.lists.hk;
+    list.innerHTML = '';
+
+    // Sort: items with address first
+    let items = STATE.orders.filter(o => o.status === 'Shipped_to_HK');
+
+    if (STATE.hkQuery) {
+        const q = STATE.hkQuery;
+        items = items.filter(o =>
+            (o.customer_id && o.customer_id.toLowerCase().includes(q)) ||
+            (o.product_name && o.product_name.toLowerCase().includes(q)) ||
+            (o.order_id && o.order_id.toLowerCase().includes(q))
+        );
+    }
+
+    items.sort((a, b) => {
+        const hasA = (a.address && a.address.length > 5) ? 1 : 0;
+        const hasB = (b.address && b.address.length > 5) ? 1 : 0;
+        return hasB - hasA;
+    });
 
     const batchBtn = document.getElementById('action-bar-hongkong');
     if (STATE.selectedHkIds.size > 0) {
@@ -141,7 +184,15 @@ function renderPurchaseList() {
         document.getElementById('btn-bulk-hk').innerText = `${t('btn_batch_hk')} (${STATE.selectedHkIds.size})`;
     } else batchBtn.classList.add('hidden');
 
-    // ... (skipping lines) ...
+    renderPagination(list, items, renderHongKongList, (o) => {
+        return createCard(o, () => toggleHkSelection(o), STATE.selectedHkIds.has(o.customer_id), false, openManagementMenu);
+    });
+}
+
+function renderFinanceList() {
+    const list = dom.lists.finance;
+    list.innerHTML = '';
+    const items = STATE.orders.filter(o => o.status === 'Completed');
 
     const batchBtn = document.getElementById('action-bar-finance');
     if (STATE.selectedFinanceIds.size > 0) {
