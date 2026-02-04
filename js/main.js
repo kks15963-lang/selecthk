@@ -268,6 +268,11 @@ function setLanguage(lang) {
         const key = el.dataset.i18n;
         if (TRANS[lang][key]) el.textContent = TRANS[lang][key];
     });
+
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.dataset.i18nPh;
+        if (TRANS[lang][key]) el.placeholder = TRANS[lang][key];
+    });
 }
 
 function setCurrency(curr) {
