@@ -127,6 +127,10 @@ async function init() {
     console.log('App Init');
     setupEvents();
 
+    // Make global for onclick
+    window.toggleCurrencyMode = toggleCurrencyMode;
+    window.saveOrder = saveOrder; // Just in case
+
     // Show Auth
     if (!STATE.auth) {
         dom.authOverlay.style.display = 'flex';
@@ -251,6 +255,28 @@ function setupEvents() {
 
     // Receipt Close
     document.getElementById('btn-close-receipt').onclick = () => dom.modals.receipt.classList.add('hidden');
+
+    // Receipt Long Press Save
+    const paper = document.getElementById('receipt-paper');
+    if (paper) {
+        let timer;
+        const start = () => {
+            paper.classList.add('saving');
+            timer = setTimeout(() => {
+                paper.classList.remove('saving');
+                if (navigator.vibrate) navigator.vibrate(50);
+                saveReceiptImage();
+            }, 800);
+        };
+        const end = () => { clearTimeout(timer); paper.classList.remove('saving'); };
+
+        paper.addEventListener('touchstart', start, { passive: true });
+        paper.addEventListener('touchend', end);
+        paper.addEventListener('touchmove', end);
+        paper.addEventListener('mousedown', start);
+        paper.addEventListener('mouseup', end);
+        paper.addEventListener('mouseleave', end);
+    }
 }
 
 // --- DATA LOGIC ---
@@ -326,14 +352,11 @@ async function saveKoreaShipping() {
     const count = STATE.selectedKoreaIds.size;
     if (count === 0) return alert("선택된 주문이 없습니다.");
 
-    const feePerItem = Number(fee) / count; // Simple division
+    const feePerItem = Number(fee) / count;
 
     const updates = Array.from(STATE.selectedKoreaIds).map(id => ({
         order_id: id,
-        ship_fee_krw: feePerItem, // Storing HKD value in KRW column as per old logic or specific logic?
-        // Note: The dashboard logic reads ship_fee_krw as HKD value if status is Settled, checking legacy logic.
-        // Dashboard code: const s_hkd = Number(o.ship_fee_krw) || 0; // Value is HKD
-        // So yes, store HKD value here.
+        ship_fee_krw: feePerItem,
         status: 'Shipped_to_HK'
     }));
 
@@ -349,23 +372,15 @@ async function saveKoreaShipping() {
 }
 
 async function saveBulkHongKongDelivery() {
-    // Current logic: Just mark as Completed? Or open modal to input tracking?
-    // User flow: List -> Select -> "Ship" -> Modal -> Save
-    // For bulk, let's open the modal if items selected
     if (STATE.selectedHkIds.size === 0) return alert("배송할 고객/주문을 선택해주세요");
 
-    // Populate Modal
-    const ids = Array.from(STATE.selectedHkIds); // These are CUSTOMER IDs in old logic, but we switched to Card selection which usually implies Order IDs.
-    // However, in renderHongKongList, we toggle toggleHkSelection(o), adding o.customer_id.
-    // So selectedHkIds contains Customer IDs.
-
+    const ids = Array.from(STATE.selectedHkIds);
     const relevantOrders = STATE.orders.filter(o => ids.includes(o.customer_id) && o.status === 'Shipped_to_HK');
 
     dom.hkCustomerInfo.innerHTML = `<strong>${ids.join(', ')}</strong><br>총 ${relevantOrders.length}개 상품`;
     dom.hkItemList.innerHTML = relevantOrders.map(o => `<div>- ${o.product_name} (${o.option})</div>`).join('');
 
-    // Clear inputs
-    dom.inpHkAddress.value = relevantOrders[0]?.address || ''; // Pre-fill first
+    dom.inpHkAddress.value = relevantOrders[0]?.address || '';
     dom.inpTracking.value = '';
     dom.inpLocalFee.value = '';
 
@@ -373,11 +388,9 @@ async function saveBulkHongKongDelivery() {
 }
 
 async function saveHongKongDelivery() {
-    // Save from Modal
     const address = dom.inpHkAddress.value;
-    const method = dom.selDeliveryMethod.value;
     const tracking = dom.inpTracking.value;
-    const localFee = dom.inpLocalFee.value; // Total for this batch
+    const localFee = dom.inpLocalFee.value;
 
     // Distribute local fee
     const ids = Array.from(STATE.selectedHkIds);
@@ -389,12 +402,11 @@ async function saveHongKongDelivery() {
 
     const updates = relevantOrders.map(o => ({
         order_id: o.order_id,
-        address: address, // Update address if changed
-        tracking_no: tracking, // We don't have this col in schema explicit? assuming remarks or separate. 
-        // Schema checks: 17 cols. tracking_no might be col 15/16. Let's assume server handles 'tracking_no' key.
+        address: address,
+        tracking_no: tracking,
         local_fee_hkd: feePerItem,
         status: 'Completed',
-        remarks: o.remarks + (tracking ? ` [Tracking: ${tracking}]` : '') // Append to remarks if no column
+        remarks: o.remarks + (tracking ? ` [Tracking: ${tracking}]` : '')
     }));
 
     showLoading();
@@ -409,10 +421,6 @@ async function saveHongKongDelivery() {
 }
 
 async function saveBulkSettlement() {
-    const settleTotal = dom.inpSettleTotal.value; // Optional Manual Override?
-    // Actually settlement is usually just status change to 'Settled'.
-    // If calculating total valid amount, dashboard does it.
-
     if (STATE.selectedFinanceIds.size === 0) return alert("정산할 주문을 선택해주세요");
 
     const updates = Array.from(STATE.selectedFinanceIds).map(id => ({
@@ -445,6 +453,19 @@ function navigate(targetId) {
     else if (targetId === 'view-korea') renderKoreaList();
     else if (targetId === 'view-hongkong') renderHongKongList();
     else if (targetId === 'view-finance') renderFinanceList();
+}
+
+function toggleCurrencyMode() {
+    STATE.currencyMode = STATE.currencyMode === 'KRW' ? 'HKD' : 'KRW';
+    renderDashboard();
+
+    const lbl = document.getElementById('label-curr-mode');
+    if (lbl) {
+        lbl.textContent = STATE.currencyMode;
+        // Visual feedback
+        lbl.style.background = STATE.currencyMode === 'KRW' ? 'rgba(0,0,0,0.05)' : '#dbeafe';
+        lbl.style.color = STATE.currencyMode === 'KRW' ? 'black' : 'var(--primary)';
+    }
 }
 
 function renderDashboard() {
@@ -496,6 +517,24 @@ function renderDashboard() {
 
     const lbl = document.getElementById('label-curr-mode');
     if (lbl) lbl.textContent = STATE.currencyMode;
+
+    // Render Settled Cards
+    const settled = filtered.filter(o => o.status === 'Settled').slice(0, 20); // Limit to recent 20 for perf
+    dom.profitList.innerHTML = '';
+
+    if (settled.length > 0) {
+        const title = document.createElement('h3');
+        title.style.margin = '20px 0 10px 0';
+        title.style.fontSize = '14px';
+        title.style.color = '#64748b';
+        title.textContent = `최근 정산 내역 (${settled.length})`;
+        dom.profitList.appendChild(title);
+
+        settled.forEach(o => {
+            const el = createCard(o);
+            dom.profitList.appendChild(el);
+        });
+    }
 }
 
 function renderOrderList() {
@@ -938,4 +977,25 @@ function showReceipt(order) {
     `;
 
     document.getElementById('rcpt-total').innerText = 'HKD ' + order.price_hkd;
+}
+
+function saveReceiptImage() {
+    const paper = document.getElementById('receipt-paper');
+    if (typeof html2canvas === 'undefined') {
+        return alert("이미지 저장 라이브러리가 로드되지 않았습니다.");
+    }
+
+    showLoading();
+    html2canvas(paper, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `Receipt_${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+        hideLoading();
+        showToast("이미지가 저장되었습니다.");
+    }).catch(err => {
+        console.error(err);
+        hideLoading();
+        alert("이미지 저장 실패");
+    });
 }
