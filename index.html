@@ -6,112 +6,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Purchase Manager 2.0</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.v2.css?v=11">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.v2.css?v=Refactor14">
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+
+    <!-- Main App -->
+    <script src="app.v2.js?v=Refactor14" defer></script>
 </head>
 
 <body>
 
-    <!-- CLEAN HEADER -->
+    <!-- Header -->
     <header class="header">
         <div class="app-title">Purchase Manager</div>
-        <!-- No Buttons Here (Antigravity Rule #4) -->
     </header>
 
-    <!-- 13. RECEIPT MODAL (Moved to Global) -->
-    <div id="receipt-modal" class="modal hidden" style="background:rgba(0,0,0,0.8); z-index: 10000;">
-        <div class="modal-content"
-            style="background:transparent; box-shadow:none; padding:0; width:90%; max-width:400px;">
-            <div id="receipt-paper"
-                style="background:white; padding:30px; border-radius:12px; position:relative; overflow:hidden;">
-                <!-- Dotted/Zigzag top/bottom edges could be added via CSS if wanted, keeping simple for now -->
-
-                <div style="text-align:center; font-weight:800; font-size:20px; margin-bottom:5px; letter-spacing:1px;">
-                    RECEIPT</div>
-                <div style="text-align:center; font-size:14px; color:#64748b; margin-bottom:20px;">select.korea.hk</div>
-
-                <div
-                    style="display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-bottom:5px;">
-                    <span id="rcpt-date">2023.10.10</span>
-                    <span id="rcpt-id">#12345</span>
-                </div>
-                <div style="border-bottom:2px dashed #e2e8f0; margin:10px 0;"></div>
-
-                <div id="rcpt-items" style="margin:20px 0;">
-                    <!-- Items go here -->
-                </div>
-
-                <div style="border-bottom:2px dashed #e2e8f0; margin:10px 0;"></div>
-
-                <div
-                    style="display:flex; justify-content:space-between; font-weight:700; font-size:18px; margin-top:20px;">
-                    <span>TOTAL</span>
-                    <span id="rcpt-total">HKD 0</span>
-                </div>
-
-                <div style="text-align:center; margin-top:30px; font-size:11px; color:#94a3b8;">
-                    Thank you for your business!
-                </div>
-            </div>
-
-            <div style="text-align:center; margin-top:20px;">
-                <button id="btn-close-receipt" class="btn-circle-action"
-                    style="background:white; color:black; width:40px; height:40px;">✕</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Content -->
-    <div id="main-content">
+    <!-- Main Content Area -->
+    <main id="main-content">
 
         <!-- 1. DASHBOARD -->
         <section id="view-dashboard" class="section active">
-            <!-- 61.8% Golden Ratio Spacer -->
-
-
-            <!-- Key Metric Hero -->
-
-
-            <!-- Dashboard Grid -->
-            <!-- Dashboard Date Filter -->
-            <div class="dashboard-filter"
-                style="background:#fff; padding:15px; border-radius:12px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <input type="date" id="dash-date-start" class="form-input" style="flex:1;">
-                    <span style="align-self:center; color:#94a3b8;">~</span>
-                    <input type="date" id="dash-date-end" class="form-input" style="flex:1;">
-                </div>
-                <div style="display:flex; justify-content:space-between; gap:5px;">
-                    <div class="preset-group">
-                        <button id="btn-dash-today" class="btn-xs">오늘</button>
-                        <button id="btn-dash-week" class="btn-xs">이번주</button>
-                        <button id="btn-dash-month" class="btn-xs">이번달</button>
-                    </div>
-                    <button id="btn-dash-reset" class="btn-xs" style="color:var(--text-sub);">전체</button>
-                </div>
-            </div>
-
+            <!-- Hero Metrics -->
             <div class="dashboard-grid">
-                <!-- Profit (Toggleable) -->
                 <div class="stat-card hero-card" onclick="toggleCurrencyMode()">
                     <div class="stat-label">
                         <span data-i18n="stat_profit">예상 수익</span>
                         <span id="label-curr-mode" class="badge"
-                            style="background:rgba(255,255,255,0.2); font-size:10px; margin-left:5px;">KRW</span>
+                            style="background:rgba(0,0,0,0.05); margin-left:5px;">KRW</span>
                     </div>
                     <div class="stat-value" id="stat-profit">0</div>
                 </div>
-
-                <!-- Revenue (Fixed HKD) -->
                 <div class="stat-card">
                     <div class="stat-label" data-i18n="stat_revenue">매출 (Sales)</div>
                     <div class="stat-value" id="stat-revenue">0</div>
                     <div class="stat-sub">HKD</div>
                 </div>
-
-                <!-- Cost (Fixed KRW) -->
                 <div class="stat-card">
                     <div class="stat-label" data-i18n="stat_cost">매입 지출 (Cost)</div>
                     <div class="stat-value" id="stat-cost">0</div>
@@ -119,7 +54,22 @@
                 </div>
             </div>
 
-            <div style="height: 20px;"></div>
+            <!-- Date Filter -->
+            <div class="dashboard-filter" style="margin-top:20px;">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="date" id="dash-date-start" class="form-input" style="flex:1;">
+                    <span style="align-self:center; color:#94a3b8;">~</span>
+                    <input type="date" id="dash-date-end" class="form-input" style="flex:1;">
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <div class="preset-group">
+                        <button id="btn-dash-today" class="btn-xs">오늘</button>
+                        <button id="btn-dash-week" class="btn-xs">이번주</button>
+                        <button id="btn-dash-month" class="btn-xs">이번달</button>
+                    </div>
+                    <button id="btn-dash-reset" class="btn-xs">전체</button>
+                </div>
+            </div>
 
             <!-- Pipeline -->
             <div class="pipeline-container">
@@ -127,18 +77,17 @@
                     <span id="badge-pending" class="step-count">0</span>
                     <span class="step-label" data-i18n="nav_purchase">매입필요</span>
                 </div>
-                <!-- Arrow Icon -->
-                <div style="align-self:center; color:#cbd5e1;">&gt;</div>
+                <div style="color:#cbd5e1;">&gt;</div>
                 <div class="pipeline-step step-ordered" onclick="navigate('view-korea')">
                     <span id="badge-ordered" class="step-count">0</span>
                     <span class="step-label" data-i18n="nav_korea">발송대기</span>
                 </div>
-                <div style="align-self:center; color:#cbd5e1;">&gt;</div>
+                <div style="color:#cbd5e1;">&gt;</div>
                 <div class="pipeline-step step-shipped" onclick="navigate('view-hongkong')">
                     <span id="badge-shipped-kr" class="step-count">0</span>
                     <span class="step-label" data-i18n="nav_hk">배송대기</span>
                 </div>
-                <div style="align-self:center; color:#cbd5e1;">&gt;</div>
+                <div style="color:#cbd5e1;">&gt;</div>
                 <div class="pipeline-step step-completed" onclick="navigate('view-finance')">
                     <span id="badge-completed" class="step-count">0</span>
                     <span class="step-label" data-i18n="nav_finance">정산대기</span>
@@ -146,15 +95,14 @@
             </div>
 
             <div style="height:30px;"></div>
-            <!-- Profit Breakdown List -->
+            <!-- Profit Breakdown -->
             <div id="dashboard-profit-list" class="card-list"></div>
-
         </section>
 
-        <!-- 2. ORDER LIST (History) -->
+        <!-- 2. ORDER LIST -->
         <section id="view-list" class="section">
             <h2 class="section-title" data-i18n="sec_order_list">주문 내역 관리</h2>
-            <!-- Advanced Filters -->
+
             <div id="filter-container" class="filter-container">
                 <div class="filter-row">
                     <input type="search" id="filter-customer" class="form-input" placeholder="고객명 (Customer)"
@@ -193,7 +141,7 @@
 
             <div id="order-list-container" class="card-list"></div>
 
-            <!-- Bottom Floating Action (FAB) -->
+            <!-- Floating Action Button -->
             <div id="fab-add" class="fab">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -201,72 +149,23 @@
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
             </div>
-
-            <!-- Advanced Management Mode Sheet -->
-            <div id="order-management-sheet" class="management-sheet hidden" style="z-index: 300;">
-                <!-- Danger Action (Small Top Right) -->
-                <div style="position:absolute; top:15px; right:20px;">
-                    <button id="btn-mng-delete"
-                        style="background:none; border:none; color:var(--danger); font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                            </path>
-                        </svg>
-                        기록 삭제
-                    </button>
-                </div>
-
-                <!-- Spacer for layout -->
-                <div style="height:30px;"></div>
-
-                <!-- Secondary Actions (Links) -->
-                <div class="sub-actions"
-                    style="display:flex; justify-content:space-between; width:100%; margin-bottom:15px; padding:0 10px;">
-                    <button id="btn-mng-receipt" class="btn-link"
-                        style="color:var(--text-sub); display:flex; align-items:center; gap:5px;">
-                        🧾 영수증 확인 및 저장
-                    </button>
-                    <button id="btn-mng-refund" class="btn-link"
-                        style="color:var(--text-sub); display:flex; align-items:center; gap:5px;">
-                        ↩️ 환불 및 취소
-                    </button>
-                </div>
-
-                <!-- Primary Action -->
-                <button id="btn-mng-edit" class="btn-primary-large">
-                    주문 정보 수정하고 업데이트하기
-                </button>
-            </div>
         </section>
 
-        <!-- 3. PURCHASE (Stock) -->
+        <!-- 3. PURCHASE -->
         <section id="view-purchase" class="section">
             <h2 class="section-title" data-i18n="sec_purchase">매입 대기 목록</h2>
-            <p class="section-desc" data-i18n="desc_purchase">매입가를 입력하여 주문을 처리합니다.</p>
-
             <div id="purchase-list-container" class="card-list"></div>
-
-            <!-- Global Action Bar (Check based) -->
             <div id="action-bar-purchase" class="fixed-bottom-action hidden">
-                <button id="btn-bulk-purchase" class="btn-primary-large">
-                    선택한 항목 매입 확정하기
-                </button>
+                <button id="btn-bulk-purchase" class="btn-primary-large">선택한 항목 매입 확정하기</button>
             </div>
         </section>
 
         <!-- 4. KOREA WAREHOUSE -->
         <section id="view-korea" class="section">
             <h2 class="section-title" data-i18n="sec_korea">배대지 발송 대기</h2>
-            <p class="section-desc" data-i18n="desc_korea">도착한 물건을 홍콩으로 발송합니다.</p>
-
             <div id="korea-list-container" class="card-list"></div>
-
             <div id="action-bar-korea" class="fixed-bottom-action hidden">
-                <button id="btn-bulk-korea" class="btn-primary-large">
-                    선택한 항목 홍콩으로 발송하기
-                </button>
+                <button id="btn-bulk-korea" class="btn-primary-large">선택한 항목 홍콩으로 발송하기</button>
             </div>
         </section>
 
@@ -277,31 +176,22 @@
                 <input type="search" id="inp-search-hk" class="form-input" placeholder="Search..."
                     data-i18n="ph_search">
             </div>
-
             <div id="hongkong-list-container" class="card-list"></div>
-
             <div id="action-bar-hongkong" class="fixed-bottom-action hidden">
-                <button id="btn-bulk-hk" class="btn-primary-large">
-                    선택한 항목 배송 완료 처리 (Ship)
-                </button>
+                <button id="btn-bulk-hk" class="btn-primary-large">선택한 항목 배송 완료 처리 (Ship)</button>
             </div>
         </section>
 
         <!-- 6. FINANCE -->
         <section id="view-finance" class="section">
             <h2 class="section-title" data-i18n="settlement_title">정산 대기 목록</h2>
-            <p class="section-desc">판매 이익을 확정하고 정산합니다.</p>
-
             <div id="finance-list-container" class="card-list"></div>
-
             <div id="action-bar-finance" class="fixed-bottom-action hidden">
-                <button id="btn-bulk-settle" class="btn-primary-large">
-                    선택한 항목 수익 정산하기 (Settle)
-                </button>
+                <button id="btn-bulk-settle" class="btn-primary-large">선택한 항목 수익 정산하기 (Settle)</button>
             </div>
         </section>
 
-        <!-- 7. SETTINGS (New Tab) -->
+        <!-- 7. SETTINGS -->
         <section id="view-settings" class="section">
             <h2 class="section-title" style="margin-bottom:30px;">설정 (Settings)</h2>
 
@@ -322,42 +212,28 @@
             </div>
 
             <div class="settings-group">
-                <label>환율 설정 (Exchange Rate: HKD 1 = KRW ?)</label>
+                <label>환율 설정 (Exchange Rate)</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="number" id="inp-exchange-rate" class="form-input" placeholder="Loading..."
-                        style="flex:1;">
-                    <button id="btn-fetch-rate" class="btn-secondary" style="width:auto; padding:0 20px;">↺</button>
+                    <input type="number" id="inp-exchange-rate" class="form-input" style="flex:1;">
+                    <button id="btn-fetch-rate" class="btn-secondary-large"
+                        style="width:auto; padding:0 20px;">↺</button>
                 </div>
                 <div style="font-size:11px; color:#94a3b8; margin-top:5px;">기본값: 실시간 환율 (수동 변경 가능)</div>
             </div>
 
             <div class="settings-group">
                 <label>데이터 동기화</label>
-                <button id="btn-refresh-manual" class="btn-secondary-large">
-                    서버 데이터 새로고침 (Refresh)
-                </button>
+                <button id="btn-refresh-manual" class="btn-secondary-large">서버 데이터 새로고침 (Refresh)</button>
             </div>
         </section>
 
-        <!-- 8. FORM (ADD NEW) -->
+        <!-- 8. ORDER FORM -->
         <section id="view-form" class="section">
-            <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <h2 class="section-title" data-i18n="sec_form">새 주문 작성</h2>
-                <button id="btn-form-help"
-                    style="background:none; border:none; color:#94a3b8; cursor:pointer; padding:5px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                </button>
+            <div class="section-header"
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 class="section-title" data-i18n="sec_form" style="margin:0;">새 주문 작성</h2>
             </div>
 
-            <!-- Receipt Modal Removed from here -->
-
-            <!-- Scripts -->
-            <!-- Inputs -->
             <input type="hidden" id="inp-order-id">
             <div class="form-group">
                 <label class="form-label">날짜</label>
@@ -373,181 +249,176 @@
             </div>
 
             <div id="product-rows-container"></div>
-            <!-- Space for spacing -->
-            <div style="height:20px;"></div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top:20px;">
                 <label class="form-label">비고</label>
                 <textarea id="inp-remarks" class="form-textarea" rows="2"></textarea>
             </div>
 
-            <div style="height:100px;"></div> <!-- Spacer for fixed footer -->
+            <div style="height:120px;"></div> <!-- Spacer -->
 
-            <!-- Fixed Footer Action -->
             <div class="fixed-bottom-action">
                 <div class="sub-actions">
                     <button id="btn-close-form" class="btn-link">작성 취소하고 돌아가기</button>
                 </div>
-                <button id="btn-save-order" class="btn-primary-large" data-i18n="btn_save">
-                    주문 정보 저장 완료
-                </button>
+                <button id="btn-save-order" class="btn-primary-large" data-i18n="btn_save">주문 정보 저장 완료</button>
             </div>
         </section>
 
+    </main>
+
+    <!-- MODALS -->
+
+    <!-- Receipt Modal -->
+    <div id="receipt-modal" class="modal hidden" style="z-index: 10000;">
+        <div class="modal-content-bottom"
+            style="background:transparent; box-shadow:none; padding:0; width:90%; max-width:400px; align-self:center; margin-bottom:auto; margin-top:auto;">
+            <div id="receipt-paper" class="receipt-paper">
+                <div style="text-align:center; font-weight:800; font-size:20px; margin-bottom:5px; letter-spacing:1px;">
+                    RECEIPT</div>
+                <div style="text-align:center; font-size:14px; color:#64748b; margin-bottom:20px;">select.korea.hk</div>
+
+                <div
+                    style="display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-bottom:5px;">
+                    <span id="rcpt-date"></span>
+                    <span id="rcpt-id"></span>
+                </div>
+                <div style="border-bottom:2px dashed #e2e8f0; margin:10px 0;"></div>
+                <div id="rcpt-items" style="margin:20px 0;"></div>
+                <div style="border-bottom:2px dashed #e2e8f0; margin:10px 0;"></div>
+
+                <div
+                    style="display:flex; justify-content:space-between; font-weight:700; font-size:18px; margin-top:20px;">
+                    <span>TOTAL</span>
+                    <span id="rcpt-total">HKD 0</span>
+                </div>
+                <div style="text-align:center; margin-top:30px; font-size:11px; color:#94a3b8;">Thank you for your
+                    business!</div>
+            </div>
+            <div style="text-align:center; margin-top:20px;">
+                <button id="btn-close-receipt" class="btn-circle-action"
+                    style="background:white; color:black; width:40px; height:40px; margin:0 auto;">✕</button>
+            </div>
+        </div>
     </div>
 
-    <!-- MODALS (Simplified Structure) -->
-
     <!-- Purchase Modal -->
-    <div id="purchase-modal" class="modal center-aligned hidden">
+    <div id="purchase-modal" class="modal hidden">
         <div class="modal-content-bottom">
             <h3 data-i18n="lbl_krw">매입가 입력</h3>
             <p id="purchase-item-name" class="modal-desc"></p>
             <input type="number" id="modal-inp-krw" class="form-input-large" placeholder="KRW 0" data-i18n="ph_cost">
-
-            <!-- Simplified Static Button -->
-            <button id="btn-save-cost" class="btn-primary-large" data-i18n="btn_save_changes" style="margin-top:20px;">
-                매입가 저장하고 완료하기
-            </button>
+            <button id="btn-save-cost" class="btn-primary-large" style="margin-top:20px;">매입가 저장하고 완료하기</button>
         </div>
     </div>
 
     <!-- Korea Modal -->
-    <div id="korea-modal" class="modal center-aligned hidden">
+    <div id="korea-modal" class="modal hidden">
         <div class="modal-content-bottom">
             <h3 data-i18n="sec_korea">배대지 비용 입력</h3>
             <p id="korea-modal-desc" class="modal-desc"></p>
-            <input type="number" id="inp-ship-total" class="form-input-large" placeholder="Total Ship Fee (HKD)"
-                data-i18n="ph_ship_total">
-
-            <button id="btn-save-korea" class="btn-primary-large" data-i18n="btn_shipped" style="margin-top:20px;">
-                배송비 저장하고 발송 처리하기
-            </button>
+            <input type="number" id="inp-ship-total" class="form-input-large" placeholder="Total Ship Fee (HKD)">
+            <button id="btn-save-korea" class="btn-primary-large" style="margin-top:20px;">배송비 저장하고 발송 처리하기</button>
         </div>
     </div>
 
-    <!-- HK Delivery Modal (Customer Group) -->
-    <div id="hk-modal" class="modal center-aligned hidden">
+    <!-- HK Modal -->
+    <div id="hk-modal" class="modal hidden">
         <div class="modal-content-bottom">
             <h3 data-i18n="sec_hongkong">배송 완료 처리</h3>
-            <div id="hk-customer-info" style="border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
-                <!-- Filled dynamically: Name, Items count -->
-            </div>
-
+            <div id="hk-customer-info" style="border-bottom:1px solid #eee; padding-bottom:10px;"></div>
             <div id="hk-item-list"
-                style="max-height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:10px;">
-                <!-- Filled dynamically: List of items -->
-            </div>
+                style="max-height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px;"></div>
 
-            <label class="input-label" style="font-size:12px; color:#64748b;">배송 주소 확인</label>
+            <label class="form-label">배송 주소</label>
             <input type="text" id="inp-hk-address" class="form-input" placeholder="Address">
 
-            <select id="sel-delivery-method" class="form-input" style="margin-top:10px; margin-bottom:10px;">
-                <option value="SF Express">SF Express</option>
-                <option value="Local Post">Local Post</option>
-                <option value="Meet-up">Meet-up</option>
-                <option value="Pickup">Pickup</option>
-            </select>
+            <div class="row" style="margin-top:10px;">
+                <select id="sel-delivery-method" class="form-input">
+                    <option value="SF Express">SF Express</option>
+                    <option value="Local Post">Local Post</option>
+                    <option value="Meet-up">Meet-up</option>
+                    <option value="Pickup">Pickup</option>
+                </select>
+            </div>
 
-            <input type="text" id="inp-tracking" class="form-input" placeholder="Tracking No."
-                style="margin-bottom:10px;">
-            <input type="number" id="inp-local-fee" class="form-input" placeholder="Local Fee (Total HKD)">
+            <input type="text" id="inp-tracking" class="form-input" placeholder="Tracking No." style="margin-top:10px;">
+            <input type="number" id="inp-local-fee" class="form-input" placeholder="Local Fee (Total HKD)"
+                style="margin-top:10px;">
 
-            <button id="btn-save-hk" class="btn-primary-large" data-i18n="btn_save_info_only" style="margin-top:20px;">
-                배송 정보 저장하기 (완료 처리 X)
-            </button>
+            <button id="btn-save-hk" class="btn-primary-large" style="margin-top:20px;">배송 정보 저장하기</button>
         </div>
     </div>
 
     <!-- Settlement Modal -->
-    <div id="settlement-modal" class="modal center-aligned hidden">
+    <div id="settlement-modal" class="modal hidden">
         <div class="modal-content-bottom">
             <h3>수익 정산</h3>
             <p id="settlement-desc" class="modal-desc"></p>
             <input type="number" id="inp-settle-total" class="form-input-large" placeholder="Total Available KRW">
+            <button id="btn-save-settle" class="btn-primary-large" style="margin-top:20px;">금액 확인하고 정산 처리하기</button>
+        </div>
+    </div>
 
-            <button id="btn-save-settle" class="btn-primary-large" style="margin-top:20px;">
-                금액 확인하고 정산 처리하기
+    <!-- Sheet: Order Management -->
+    <div id="order-management-sheet" class="management-sheet hidden">
+        <div style="position:absolute; top:15px; right:20px;">
+            <button id="btn-mng-delete" class="action-btn danger"
+                style="padding:0; border:none; font-size:12px; width:auto; justify-content:flex-end;">
+                🗑️ 기록 삭제
             </button>
         </div>
-    </div>
-
-    <!-- List Detail Modal -->
-    <div id="list-modal" class="modal hidden">
-        <div class="modal-content-bottom" style="height:80vh; justify-content:flex-start;">
-            <div style="display:flex; justify-content:space-between; width:100%;">
-                <h3 id="list-modal-title">상세 정보</h3>
-                <button id="btn-close-list" style="border:none; background:none; font-size:20px;">✕</button>
-            </div>
-            <div id="list-modal-content" style="overflow-y:auto; flex:1; width:100%;"></div>
-
-            <div id="list-modal-footer" class="fixed-bottom-action hidden">
-                <button id="btn-settle-selected" class="btn-primary-large">정산하기</button>
-            </div>
+        <div style="height:30px;"></div>
+        <div class="sub-actions" style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <button id="btn-mng-receipt" class="btn-link">🧾 영수증 확인</button>
+            <button id="btn-mng-refund" class="btn-link">↩️ 환불 및 취소</button>
         </div>
+        <button id="btn-mng-edit" class="btn-primary-large">주문 정보 수정하고 업데이트하기</button>
     </div>
 
-    <!-- Product Action Sheet -->
+    <!-- Sheet: Product Action -->
     <div id="product-action-sheet" class="action-sheet-overlay">
         <div class="action-sheet">
             <h3 style="margin:0 0 15px 0;">상품 관리</h3>
             <button class="action-btn" id="btn-action-add">➕ 아래에 새 상품 추가</button>
             <button class="action-btn" id="btn-action-copy">📋 이 상품 복사하기</button>
             <button class="action-btn danger" id="btn-action-delete">🗑️ 삭제하기</button>
-            <button class="action-btn" id="btn-action-cancel"
-                style="margin-top:10px;text-align:center;justify-content:center;color:#64748b;">취소</button>
+            <button class="action-btn" id="btn-action-cancel" style="justify-content:center; color:#64748b;">취소</button>
         </div>
     </div>
 
     <!-- Auth Overlay -->
     <div id="auth-overlay"
         style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <h2 style="color:#2563eb; margin-bottom:20px;">Purchase Manager</h2>
+        <h2 style="color:var(--primary); margin-bottom:20px; font-weight:800;">Purchase Manager</h2>
         <input type="password" id="auth-code"
             style="padding:15px; border:1px solid #ccc; border-radius:12px; font-size:24px; text-align:center; width:200px; margin-bottom:20px;"
             placeholder="PIN">
         <button id="btn-auth-confirm" class="btn-primary-large" style="width:200px;">접속하기</button>
     </div>
 
-    <!-- Toast & Loading -->
+    <!-- Components -->
     <div id="toast-container" class="toast-container"></div>
-    <!-- 15. LOADING OVERLAY -->
     <div id="loading-overlay" class="hidden">
-        <img src="loading.png" class="loading-spinner" alt="Loading..." style="width: 80px; height: 80px;">
+        <div
+            style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid var(--primary); border-radius:50%; animation:spin 1s linear infinite;">
+        </div>
     </div>
 
-    <!-- SCRIPTS -->
-    <!-- Main Navigation -->
+    <!-- Navigation -->
     <nav class="bottom-nav">
-        <button class="nav-item active" data-target="view-dashboard">
-            <span>📊</span><span>현황</span>
-        </button>
-        <button class="nav-item" data-target="view-list">
-            <span>📋</span><span>주문</span>
-        </button>
-        <button class="nav-item" data-target="view-purchase">
-            <span>🛒</span><span>매입</span>
-        </button>
-        <button class="nav-item" data-target="view-korea">
-            <span>📦</span><span>배대지</span>
-        </button>
-        <button class="nav-item" data-target="view-hongkong">
-            <span>🚚</span><span>배송</span>
-        </button>
-        <button class="nav-item" data-target="view-finance">
-            <span>💰</span><span>정산</span>
-        </button>
-        <button class="nav-item" data-target="view-settings">
-            <span>⚙️</span><span>설정</span>
-        </button>
+        <button class="nav-item active" data-target="view-dashboard"><span>📊</span><span>현황</span></button>
+        <button class="nav-item" data-target="view-list"><span>📋</span><span>주문</span></button>
+        <button class="nav-item" data-target="view-purchase"><span>🛒</span><span>매입</span></button>
+        <button class="nav-item" data-target="view-korea"><span>📦</span><span>배대지</span></button>
+        <button class="nav-item" data-target="view-hongkong"><span>🚚</span><span>배송</span></button>
+        <button class="nav-item" data-target="view-finance"><span>💰</span><span>정산</span></button>
+        <button class="nav-item" data-target="view-settings"><span>⚙️</span><span>설정</span></button>
     </nav>
 
-    <!-- DataLists -->
+    <!-- Datalists -->
     <datalist id="dl-customers"></datalist>
-    <datalist id="dl-products"></datalist>
-    <datalist id="dl-options"></datalist>
-
-    <script src="app.v2.js?v=GlobalRefactor1"></script>
+    <datalist id="list-products"></datalist>
 </body>
 
 </html>
