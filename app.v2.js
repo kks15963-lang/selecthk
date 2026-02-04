@@ -233,10 +233,9 @@ function setupEvents() {
     document.getElementById('btn-mng-delivery').onclick = () => {
         const o = STATE.orders.find(x => x.order_id === STATE.managementTargetId);
         if (o) {
-            // Check if we are in bulk selection, if so warn or just deselect?
-            // Prioritize single edit
             STATE.selectedHkIds.clear();
-            openHkDeliveryModal([o.customer_id]);
+            STATE.selectedHkIds.add(o.customer_id); // Fix: Add to selection so save works
+            openHkDeliveryModal();
         }
         dom.mngSheet.classList.add('hidden');
     };
@@ -577,7 +576,36 @@ function renderDashboard() {
         dom.profitList.appendChild(title);
 
         settled.forEach(o => {
-            const el = createCard(o);
+            // Custom Card for Profit Display
+            const el = document.createElement('div');
+            el.className = 'card';
+
+            const p = Number(o.price_hkd) || 0;
+            const c_krw = Number(o.cost_krw) || 0;
+            const s = Number(o.ship_fee_krw) || 0; // Intl Shipping (KRW usually?) Check field... ship_fee_krw is likely intl shipping in KRW?
+            // Wait, previous calc used: expense += c + s (if s is in KRW). 
+            // Let's assume ship_fee_krw is KRW.
+            const l = Number(o.local_fee_hkd) || 0;
+
+            // Convert for display
+            const rate = STATE.exchangeRate;
+            const c_hkd = rate ? (c_krw / rate) : 0;
+            const s_hkd = rate ? (s / rate) : 0;
+            const profit = p - c_hkd - s_hkd - l;
+
+            el.innerHTML = `
+                <div class="card-header">
+                    <span class="card-title">${o.product_name}</span>
+                    <span class="badge completed">수익: HKD ${Math.round(profit).toLocaleString()}</span>
+                </div>
+                <div class="card-subtitle">${o.customer_id} | ${o.order_date}</div>
+                <div style="margin-top:8px; font-size:12px; color:#64748b; background:#f8fafc; padding:8px; border-radius:8px;">
+                    <div style="display:flex; justify-content:space-between;"><span>판매가</span> <span>+ HKD ${p.toLocaleString()}</span></div>
+                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>매입가</span> <span>- HKD ${Math.round(c_hkd).toLocaleString()} (${c_krw.toLocaleString()}원)</span></div>
+                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>배대지</span> <span>- HKD ${Math.round(s_hkd).toLocaleString()}</span></div>
+                    <div style="display:flex; justify-content:space-between; color:#ef4444;"><span>현지배송</span> <span>- HKD ${l.toLocaleString()}</span></div>
+                </div>
+            `;
             dom.profitList.appendChild(el);
         });
     }
@@ -743,12 +771,19 @@ function createCard(o, onClick, isSelected) {
 
     const statusText = TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status;
 
+    // Delivery Info Validation Badge (Hong Kong Tab specific logic, but can apply globally if relevant)
+    let warning = '';
+    if (o.status === 'Shipped_to_HK' && (!o.address || o.address.length < 5)) {
+        warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">⚠️ 배송 정보/주소 필요</div>`;
+    }
+
     el.innerHTML = `
         <div class="card-header">
             <span class="card-title">${o.product_name}</span>
             <span class="badge ${o.status.toLowerCase()}">${statusText}</span>
         </div>
         <div class="card-subtitle" style="color:#64748b; font-size:13px;">${o.customer_id} | ${o.option} (x${o.qty})</div>
+        ${warning}
         <div class="card-details">
             <span>HKD ${Number(o.price_hkd).toLocaleString()}</span>
             <span style="color:#94a3b8">${o.order_date}</span>
