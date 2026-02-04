@@ -240,55 +240,54 @@ function setupEvents() {
         }
         dom.mngSheet.classList.add('hidden');
     };
-    dom.mngSheet.classList.add('hidden');
-};
 
 
-// Settings
-document.getElementById('btn-lang-ko').onclick = () => setLang('ko');
-document.getElementById('btn-lang-cn').onclick = () => setLang('cn');
-document.getElementById('btn-curr-krw').onclick = () => setCurrency('KRW');
-document.getElementById('btn-curr-hkd').onclick = () => setCurrency('HKD');
-document.getElementById('btn-refresh-manual').onclick = loadData;
 
-// Global Dismiss
-document.addEventListener('click', (e) => {
-    // Modal Dismiss
-    if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
-    if (e.target.classList.contains('action-sheet-overlay')) closeProductActionSheet();
+    // Settings
+    document.getElementById('btn-lang-ko').onclick = () => setLang('ko');
+    document.getElementById('btn-lang-cn').onclick = () => setLang('cn');
+    document.getElementById('btn-curr-krw').onclick = () => setCurrency('KRW');
+    document.getElementById('btn-curr-hkd').onclick = () => setCurrency('HKD');
+    document.getElementById('btn-refresh-manual').onclick = loadData;
 
-    // Management Sheet Dismiss (Clicking outside)
-    if (!dom.mngSheet.classList.contains('hidden') && !dom.mngSheet.contains(e.target)) {
-        // Check if we didn't just click a card to open it
-        const pressing = document.querySelector('.card.pressing');
-        if (!pressing) dom.mngSheet.classList.add('hidden');
+    // Global Dismiss
+    document.addEventListener('click', (e) => {
+        // Modal Dismiss
+        if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
+        if (e.target.classList.contains('action-sheet-overlay')) closeProductActionSheet();
+
+        // Management Sheet Dismiss (Clicking outside)
+        if (!dom.mngSheet.classList.contains('hidden') && !dom.mngSheet.contains(e.target)) {
+            // Check if we didn't just click a card to open it
+            const pressing = document.querySelector('.card.pressing');
+            if (!pressing) dom.mngSheet.classList.add('hidden');
+        }
+    });
+
+    // Receipt Close
+    document.getElementById('btn-close-receipt').onclick = () => dom.modals.receipt.classList.add('hidden');
+
+    // Receipt Long Press Save
+    const paper = document.getElementById('receipt-paper');
+    if (paper) {
+        let timer;
+        const start = () => {
+            paper.classList.add('saving');
+            timer = setTimeout(() => {
+                paper.classList.remove('saving');
+                if (navigator.vibrate) navigator.vibrate(50);
+                saveReceiptImage();
+            }, 800);
+        };
+        const end = () => { clearTimeout(timer); paper.classList.remove('saving'); };
+
+        paper.addEventListener('touchstart', start, { passive: true });
+        paper.addEventListener('touchend', end);
+        paper.addEventListener('touchmove', end);
+        paper.addEventListener('mousedown', start);
+        paper.addEventListener('mouseup', end);
+        paper.addEventListener('mouseleave', end);
     }
-});
-
-// Receipt Close
-document.getElementById('btn-close-receipt').onclick = () => dom.modals.receipt.classList.add('hidden');
-
-// Receipt Long Press Save
-const paper = document.getElementById('receipt-paper');
-if (paper) {
-    let timer;
-    const start = () => {
-        paper.classList.add('saving');
-        timer = setTimeout(() => {
-            paper.classList.remove('saving');
-            if (navigator.vibrate) navigator.vibrate(50);
-            saveReceiptImage();
-        }, 800);
-    };
-    const end = () => { clearTimeout(timer); paper.classList.remove('saving'); };
-
-    paper.addEventListener('touchstart', start, { passive: true });
-    paper.addEventListener('touchend', end);
-    paper.addEventListener('touchmove', end);
-    paper.addEventListener('mousedown', start);
-    paper.addEventListener('mouseup', end);
-    paper.addEventListener('mouseleave', end);
-}
 }
 
 // --- DATA LOGIC ---
@@ -303,18 +302,20 @@ async function loadData() {
     showLoading();
     try {
         const res = await sendData({ action: 'getOrders', auth: STATE.auth });
-        if (res.success) {
-            STATE.orders = res.data;
+        // Handle both 'success': true and 'result': 'success' formats
+        if (res && (res.success || res.result === 'success')) {
+            STATE.orders = res.data || res.orders || [];
             dom.authOverlay.style.display = 'none';
             renderDashboard();
             if (STATE.selectedTab !== 'view-dashboard') navigate(STATE.selectedTab);
         } else {
-            alert(res.message || "Auth Failed");
+            // Show detailed error for debugging
+            alert("로그인 실패: " + (res.message || "서버 응답 오류") + "\n" + JSON.stringify(res));
             dom.authOverlay.style.display = 'flex';
         }
     } catch (e) {
         console.error(e);
-        showToast("데이터 로드 실패");
+        showToast("데이터 로드 실패: " + e.message);
     } finally {
         hideLoading();
     }
@@ -676,11 +677,7 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
     const start = (currentPage - 1) * itemsPerPage;
     const pageItems = items.slice(start, start + itemsPerPage);
 
-    pageItems.forEach(o => {
-        const card = createItemOverride ? createItemOverride(o) : createCard(o);
-        container.appendChild(card);
-    });
-
+    // 4. Wrapper: Create Buttons/Select
     const wrapper = document.createElement('div');
     wrapper.className = 'pagination-wrapper';
 
@@ -708,7 +705,8 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
         if (!disabled) b.onclick = () => {
             STATE.pagination.currentPage = p;
             renderFunc();
-            container.previousElementSibling?.scrollIntoView({ behavior: 'smooth' });
+            // Scroll to the top of the container (wrapper itself)
+            wrapper.scrollIntoView({ behavior: 'smooth' });
         };
         return b;
     };
@@ -727,7 +725,15 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
     btns.appendChild(createBtn('&gt;', currentPage + 1, false, currentPage >= totalPages));
 
     wrapper.append(select, btns);
+
+    // 5. Append Wrapper FIRST (Top)
     container.appendChild(wrapper);
+
+    // 6. Append Cards
+    pageItems.forEach(o => {
+        const card = createItemOverride ? createItemOverride(o) : createCard(o);
+        container.appendChild(card);
+    });
 }
 
 // --- CARD & INPUTSHelpers ---
