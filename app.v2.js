@@ -642,7 +642,7 @@ function renderPurchaseList() {
             if (has) STATE.selectedBatchIds.delete(o.order_id);
             else STATE.selectedBatchIds.add(o.order_id);
             renderPurchaseList();
-        }, has);
+        }, has, true); // Disable long-press for Purchase Tab
     });
 }
 
@@ -765,13 +765,14 @@ function renderPagination(container, items, renderFunc, createItemOverride = nul
 }
 
 // --- CARD & INPUTSHelpers ---
-function createCard(o, onClick, isSelected) {
+// --- CARD & INPUTSHelpers ---
+function createCard(o, onClick, isSelected, disableLongPress = false) {
     const el = document.createElement('div');
     el.className = `card ${isSelected ? 'selected-glow' : ''}`;
 
     const statusText = TRANS[STATE.lang][`status_${o.status.toLowerCase()}`] || o.status;
 
-    // Delivery Info Validation Badge (Hong Kong Tab specific logic, but can apply globally if relevant)
+    // Delivery Info Validation Badge (Hong Kong Tab specific logic)
     let warning = '';
     if (o.status === 'Shipped_to_HK' && (!o.address || o.address.length < 5)) {
         warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">⚠️ 배송 정보/주소 필요</div>`;
@@ -790,51 +791,63 @@ function createCard(o, onClick, isSelected) {
         </div>
     `;
 
-    if (onClick) el.onclick = onClick;
+    // Long Press Logic
+    let isLongPress = false;
 
-    // Long Press
-    let timer;
-    const start = () => {
-        el.classList.add('pressing');
-        timer = setTimeout(() => {
-            el.classList.remove('pressing');
-            if (navigator.vibrate) navigator.vibrate(50);
-            openManagementMenu(o);
-        }, 600);
-    };
-    const end = () => { clearTimeout(timer); el.classList.remove('pressing'); };
-
-    el.addEventListener('touchstart', start, { passive: true });
-    el.addEventListener('touchend', end);
-    el.addEventListener('touchmove', end);
-    el.addEventListener('mousedown', start);
-    el.addEventListener('mouseup', end);
-    el.addEventListener('mouseleave', end);
-
-    return el;
-}
-
-function openForm(data = null) {
-    navigate('view-form');
-    dom.form.id.value = data ? data.order_id : '';
-    dom.form.date.value = data ? data.order_date : new Date().toISOString().split('T')[0];
-    dom.form.customer.value = data ? data.customer_id : '';
-    dom.form.address.value = data ? data.address : '';
-    dom.form.remarks.value = data ? data.remarks : '';
-    dom.form.container.innerHTML = '';
-
-    if (data) {
-        addProductRow({ product: data.product_name, qty: data.qty, price: data.price_hkd, option: data.option });
-    } else {
-        addProductRow();
+    if (onClick) {
+        el.onclick = (e) => {
+            if (isLongPress) {
+                // Prevent click if it was a long press
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                isLongPress = false; // Reset
+                return;
+            }
+            onClick(e);
+        };
     }
-}
 
-function addProductRow(data = null) {
-    const row = document.createElement('div');
-    row.className = 'product-card';
+    if (!disableLongPress) {
+        let timer;
+        const start = () => {
+            isLongPress = false;
+            el.classList.add('pressing');
+            timer = setTimeout(() => {
+                isLongPress = true; // Flag for click blocking
+            };
 
-    row.innerHTML = `
+            el.addEventListener('touchstart', start, { passive: true });
+            el.addEventListener('touchend', end, { passive: false }); // Passive false needed for preventing default
+            el.addEventListener('touchmove', end);
+            el.addEventListener('mousedown', start);
+            el.addEventListener('mouseup', end);
+            el.addEventListener('mouseleave', end);
+        }
+
+        return el;
+    }
+
+    function openForm(data = null) {
+        navigate('view-form');
+        dom.form.id.value = data ? data.order_id : '';
+        dom.form.date.value = data ? data.order_date : new Date().toISOString().split('T')[0];
+        dom.form.customer.value = data ? data.customer_id : '';
+        dom.form.address.value = data ? data.address : '';
+        dom.form.remarks.value = data ? data.remarks : '';
+        dom.form.container.innerHTML = '';
+
+        if (data) {
+            addProductRow({ product: data.product_name, qty: data.qty, price: data.price_hkd, option: data.option });
+        } else {
+            addProductRow();
+        }
+    }
+
+    function addProductRow(data = null) {
+        const row = document.createElement('div');
+        row.className = 'product-card';
+
+        row.innerHTML = `
         <div style="margin-bottom:12px;">
             <label class="form-label">상품명 <span style="color:var(--danger)">*</span></label>
             <div class="autocomplete-wrapper">
@@ -861,250 +874,264 @@ function addProductRow(data = null) {
         </div>
     `;
 
-    const inpProd = row.querySelector('.inp-product');
-    const boxProd = row.querySelector('.inp-product + .suggestion-box');
+        const inpProd = row.querySelector('.inp-product');
+        const boxProd = row.querySelector('.inp-product + .suggestion-box');
 
-    const inpOpt = row.querySelector('.inp-option');
-    const boxOpt = row.querySelector('.inp-option + .suggestion-box');
+        const inpOpt = row.querySelector('.inp-option');
+        const boxOpt = row.querySelector('.inp-option + .suggestion-box');
 
-    setupAutocomplete(inpProd, boxProd, 'product_name');
-    setupAutocomplete(inpOpt, boxOpt, 'option', () => inpProd.value.trim());
+        setupAutocomplete(inpProd, boxProd, 'product_name');
+        setupAutocomplete(inpOpt, boxOpt, 'option', () => inpProd.value.trim());
 
-    bindRowActions(row);
-    dom.form.container.appendChild(row);
-}
+        bindRowActions(row);
+        dom.form.container.appendChild(row);
+    }
 
-function setupAutocomplete(input, box, key, filterFn = null) {
-    input.addEventListener('input', () => {
-        const val = input.value.trim().toLowerCase();
-        if (!val) { box.classList.remove('active'); return; }
+    function setupAutocomplete(input, box, key, filterFn = null) {
+        input.addEventListener('input', () => {
+            const val = input.value.trim().toLowerCase();
+            if (!val) { box.classList.remove('active'); return; }
 
-        let source = STATE.orders;
-        if (filterFn) {
-            const filterVal = filterFn();
-            if (filterVal) source = source.filter(o => o.product_name === filterVal);
-        }
+            let source = STATE.orders;
+            if (filterFn) {
+                const filterVal = filterFn();
+                if (filterVal) source = source.filter(o => o.product_name === filterVal);
+            }
 
-        const unique = [...new Set(source.map(o => o[key]).filter(Boolean))];
-        const matches = unique.filter(txt => txt.toLowerCase().includes(val));
+            const unique = [...new Set(source.map(o => o[key]).filter(Boolean))];
+            const matches = unique.filter(txt => txt.toLowerCase().includes(val));
 
-        if (matches.length > 0) {
-            box.innerHTML = matches.map(txt => {
-                const idx = txt.toLowerCase().indexOf(val);
-                const pre = txt.substring(0, idx);
-                const match = txt.substring(idx, idx + val.length);
-                const post = txt.substring(idx + val.length);
-                return `<div class="suggestion-item"><span class="icon">🔍</span> ${pre}<span class="match">${match}</span>${post}</div>`;
-            }).join('');
+            if (matches.length > 0) {
+                box.innerHTML = matches.map(txt => {
+                    const idx = txt.toLowerCase().indexOf(val);
+                    const pre = txt.substring(0, idx);
+                    const match = txt.substring(idx, idx + val.length);
+                    const post = txt.substring(idx + val.length);
+                    return `<div class="suggestion-item"><span class="icon">🔍</span> ${pre}<span class="match">${match}</span>${post}</div>`;
+                }).join('');
 
-            box.querySelectorAll('.suggestion-item').forEach((item, i) => {
-                item.onclick = () => {
-                    input.value = matches[i];
-                    box.classList.remove('active');
-                };
-            });
+                box.querySelectorAll('.suggestion-item').forEach((item, i) => {
+                    item.onclick = () => {
+                        input.value = matches[i];
+                        box.classList.remove('active');
+                    };
+                });
 
-            box.classList.add('active');
-        } else {
-            box.classList.remove('active');
-        }
-    });
-
-    // Hide on blur (delayed to allow click)
-    input.addEventListener('blur', () => setTimeout(() => box.classList.remove('active'), 200));
-    input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
-}
-
-// ensureProductDatalist & updateOptionDatalist Removed as they are replaced by custom logic
-
-function bindRowActions(row) {
-    let timer;
-    const start = () => {
-        row.classList.add('pressing');
-        timer = setTimeout(() => {
-            row.classList.remove('pressing');
-            if (navigator.vibrate) navigator.vibrate(50);
-            openProductSheet(row);
-        }, 600);
-    };
-    const end = () => { clearTimeout(timer); row.classList.remove('pressing'); };
-
-    row.addEventListener('touchstart', start, { passive: true });
-    row.addEventListener('touchend', end);
-    row.addEventListener('touchmove', end);
-    row.addEventListener('mousedown', start);
-    row.addEventListener('mouseup', end);
-    row.addEventListener('mouseleave', end);
-}
-
-// --- SHEET & MENUS ---
-let currentRow = null;
-function openProductSheet(row) {
-    currentRow = row;
-    dom.prodSheet.classList.add('active');
-}
-function closeProductActionSheet() {
-    dom.prodSheet.classList.remove('active');
-    currentRow = null;
-}
-
-document.getElementById('btn-action-add').onclick = () => {
-    addProductRow();
-    closeProductActionSheet();
-};
-document.getElementById('btn-action-copy').onclick = () => {
-    if (!currentRow) return;
-    const inputs = currentRow.querySelectorAll('input');
-    addProductRow({ product: inputs[0].value, qty: inputs[1].value, price: inputs[2].value, option: inputs[3].value });
-    closeProductActionSheet();
-};
-document.getElementById('btn-action-delete').onclick = () => {
-    if (currentRow && dom.form.container.children.length > 1) currentRow.remove();
-    else if (currentRow) currentRow.querySelectorAll('input').forEach(i => i.value = '');
-    closeProductActionSheet();
-};
-document.getElementById('btn-action-cancel').onclick = closeProductActionSheet;
-
-
-// --- SAVE LOGIC ---
-async function saveOrder() {
-    const cust = dom.form.customer.value.trim();
-    if (!cust) return alert("고객명을 입력해주세요");
-
-    const rows = Array.from(dom.form.container.children);
-    const orders = [];
-
-    for (const r of rows) {
-        const p = r.querySelector('.inp-product').value.trim();
-        const q = r.querySelector('.inp-qty').value;
-        const price = r.querySelector('.inp-price').value;
-        const opt = r.querySelector('.inp-option').value.trim();
-
-        if (!p || !q || Number(q) <= 0 || !opt) return alert("상품명, 수량(1이상), 옵션을 모두 입력해주세요");
-
-        orders.push({
-            customer_id: cust,
-            product_name: p,
-            option: opt,
-            qty: Number(q),
-            price_hkd: Number(price) || 0,
-            order_date: dom.form.date.value,
-            status: 'Pending',
-            address: dom.form.address.value.trim(),
-            remarks: dom.form.remarks.value.trim()
+                box.classList.add('active');
+            } else {
+                box.classList.remove('active');
+            }
         });
+
+        // Hide on blur (delayed to allow click)
+        input.addEventListener('blur', () => setTimeout(() => box.classList.remove('active'), 200));
+        input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
     }
 
-    showLoading();
-    try {
-        const res = await sendData({ action: 'createOrder', orders: orders });
-        if (res) {
-            alert('저장되었습니다.');
-            navigate('view-list');
-            loadData();
-        }
-    } catch (e) { console.error(e); alert('저장 실패'); }
-    finally { hideLoading(); }
-}
+    // ensureProductDatalist & updateOptionDatalist Removed as they are replaced by custom logic
 
+    function bindRowActions(row) {
+        let timer;
+        const start = () => {
+            row.classList.add('pressing');
+            timer = setTimeout(() => {
+                row.classList.remove('pressing');
+                if (navigator.vibrate) navigator.vibrate(50);
+                openProductSheet(row);
+            }, 600);
+        };
+        const end = () => { clearTimeout(timer); row.classList.remove('pressing'); };
 
-// --- UTILS ---
-function toggleHkSelection(o) {
-    if (STATE.selectedHkIds.has(o.customer_id)) STATE.selectedHkIds.delete(o.customer_id);
-    else STATE.selectedHkIds.add(o.customer_id);
-    renderHongKongList();
-}
-
-function openBatchModal(type) {
-    if (type === 'purchase') dom.modals.purchase.classList.remove('hidden');
-    if (type === 'korea') dom.modals.korea.classList.remove('hidden');
-    if (type === 'settlement') dom.modals.settlement.classList.remove('hidden');
-}
-
-function setDashDate(days) {
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    STATE.dashFilters.startDate = d.toISOString().split('T')[0];
-    STATE.dashFilters.endDate = new Date().toISOString().split('T')[0];
-    document.getElementById('dash-date-start').value = STATE.dashFilters.startDate;
-    document.getElementById('dash-date-end').value = STATE.dashFilters.endDate;
-    renderDashboard();
-}
-
-function showLoading() { dom.loadingOverlay.classList.remove('hidden'); }
-function hideLoading() { dom.loadingOverlay.classList.add('hidden'); }
-function showToast(msg) {
-    const t = document.createElement('div');
-    t.className = 'toast'; t.innerText = msg;
-    dom.toastContainer.appendChild(t);
-    setTimeout(() => t.remove(), 2000);
-}
-
-async function fetchExchangeRate() {
-    try {
-        const res = await fetch(CONFIG.EXCHANGE_API);
-        const d = await res.json();
-        if (d && d.rates && d.rates.KRW) {
-            STATE.exchangeRate = Number(d.rates.KRW.toFixed(2));
-            const inp = document.getElementById('inp-exchange-rate');
-            if (inp) inp.value = STATE.exchangeRate;
-        }
-    } catch (e) { console.warn("Rate Fetch Failed"); }
-}
-
-function setLang(l) { STATE.lang = l; renderDashboard(); }
-function setCurrency(c) { STATE.currencyMode = c; renderDashboard(); }
-
-// --- MANAGEMENT MENU ---
-function openManagementMenu(order) {
-    STATE.managementTargetId = order.order_id;
-
-    // Toggle Delivery Edit Button
-    const btnDelivery = document.getElementById('btn-mng-delivery');
-    if (order.status === 'Shipped_to_HK') {
-        btnDelivery.classList.remove('hidden');
-    } else {
-        btnDelivery.classList.add('hidden');
+        row.addEventListener('touchstart', start, { passive: true });
+        row.addEventListener('touchend', end);
+        row.addEventListener('touchmove', end);
+        row.addEventListener('mousedown', start);
+        row.addEventListener('mouseup', end);
+        row.addEventListener('mouseleave', end);
     }
 
-    dom.mngSheet.classList.remove('hidden');
-}
+    // --- SHEET & MENUS ---
+    let currentRow = null;
+    function openProductSheet(row) {
+        currentRow = row;
+        dom.prodSheet.classList.add('active');
+    }
+    function closeProductActionSheet() {
+        dom.prodSheet.classList.remove('active');
+        currentRow = null;
+    }
 
-// Receipt Logic
-function showReceipt(order) {
-    dom.modals.receipt.classList.remove('hidden');
+    document.getElementById('btn-action-add').onclick = () => {
+        addProductRow();
+        closeProductActionSheet();
+    };
+    document.getElementById('btn-action-copy').onclick = () => {
+        if (!currentRow) return;
+        const inputs = currentRow.querySelectorAll('input');
+        addProductRow({ product: inputs[0].value, qty: inputs[1].value, price: inputs[2].value, option: inputs[3].value });
+        closeProductActionSheet();
+    };
+    document.getElementById('btn-action-delete').onclick = () => {
+        if (currentRow && dom.form.container.children.length > 1) currentRow.remove();
+        else if (currentRow) currentRow.querySelectorAll('input').forEach(i => i.value = '');
+        closeProductActionSheet();
+    };
+    document.getElementById('btn-action-cancel').onclick = closeProductActionSheet;
 
-    document.getElementById('rcpt-date').innerText = order.order_date;
-    document.getElementById('rcpt-id').innerText = '#' + order.order_id.slice(-5);
 
-    // If order is singular (from list), just one item
-    document.getElementById('rcpt-items').innerHTML = `
+    // --- SAVE LOGIC ---
+    async function saveOrder() {
+        const cust = dom.form.customer.value.trim();
+        if (!cust) return alert("고객명을 입력해주세요");
+
+        const rows = Array.from(dom.form.container.children);
+        const orders = [];
+
+        for (const r of rows) {
+            const p = r.querySelector('.inp-product').value.trim();
+            const q = r.querySelector('.inp-qty').value;
+            const price = r.querySelector('.inp-price').value;
+            const opt = r.querySelector('.inp-option').value.trim();
+
+            if (!p || !q || Number(q) <= 0 || !opt) return alert("상품명, 수량(1이상), 옵션을 모두 입력해주세요");
+
+            orders.push({
+                customer_id: cust,
+                product_name: p,
+                option: opt,
+                qty: Number(q),
+                price_hkd: Number(price) || 0,
+                order_date: dom.form.date.value,
+                status: 'Pending',
+                address: dom.form.address.value.trim(),
+                remarks: dom.form.remarks.value.trim()
+            });
+        }
+
+        showLoading();
+        try {
+            const res = await sendData({ action: 'createOrder', orders: orders });
+            if (res) {
+                alert('저장되었습니다.');
+                navigate('view-list');
+                loadData();
+            }
+        } catch (e) { console.error(e); alert('저장 실패'); }
+        finally { hideLoading(); }
+    }
+
+
+    // --- UTILS ---
+    function toggleHkSelection(o) {
+        if (STATE.selectedHkIds.has(o.customer_id)) STATE.selectedHkIds.delete(o.customer_id);
+        else STATE.selectedHkIds.add(o.customer_id);
+        renderHongKongList();
+    }
+
+    function openBatchModal(type) {
+        if (type === 'purchase') dom.modals.purchase.classList.remove('hidden');
+        if (type === 'korea') dom.modals.korea.classList.remove('hidden');
+        if (type === 'settlement') dom.modals.settlement.classList.remove('hidden');
+    }
+
+    function setDashDate(days) {
+        const d = new Date();
+        d.setDate(d.getDate() - days);
+        STATE.dashFilters.startDate = d.toISOString().split('T')[0];
+        STATE.dashFilters.endDate = new Date().toISOString().split('T')[0];
+        document.getElementById('dash-date-start').value = STATE.dashFilters.startDate;
+        document.getElementById('dash-date-end').value = STATE.dashFilters.endDate;
+        renderDashboard();
+    }
+
+    function showLoading() { dom.loadingOverlay.classList.remove('hidden'); }
+    function hideLoading() { dom.loadingOverlay.classList.add('hidden'); }
+    function showToast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast'; t.innerText = msg;
+        dom.toastContainer.appendChild(t);
+        setTimeout(() => t.remove(), 2000);
+    }
+
+    async function fetchExchangeRate() {
+        try {
+            const res = await fetch(CONFIG.EXCHANGE_API);
+            const d = await res.json();
+            if (d && d.rates && d.rates.KRW) {
+                STATE.exchangeRate = Number(d.rates.KRW.toFixed(2));
+                const inp = document.getElementById('inp-exchange-rate');
+                if (inp) inp.value = STATE.exchangeRate;
+            }
+        } catch (e) { console.warn("Rate Fetch Failed"); }
+    }
+
+    function setLang(l) { STATE.lang = l; renderDashboard(); }
+    function setCurrency(c) { STATE.currencyMode = c; renderDashboard(); }
+
+    // --- MANAGEMENT MENU ---
+    function openManagementMenu(order) {
+        STATE.managementTargetId = order.order_id;
+
+        const btnDelivery = document.getElementById('btn-mng-delivery');
+        const btnReceipt = document.getElementById('btn-mng-receipt');
+        const btnRefund = document.getElementById('btn-mng-refund');
+        const btnEdit = document.getElementById('btn-mng-edit');
+        const btnDelete = document.getElementById('btn-mng-delete');
+
+        if (order.status === 'Shipped_to_HK') {
+            // Delivery Tab Context: Only show Delivery Edit
+            btnDelivery?.classList.remove('hidden');
+            btnReceipt?.classList.add('hidden');
+            btnRefund?.classList.add('hidden');
+            btnEdit?.classList.add('hidden');
+            btnDelete?.classList.add('hidden');
+        } else {
+            // Normal Context: Show standard actions, hide Delivery Edit
+            btnDelivery?.classList.add('hidden');
+            btnReceipt?.classList.remove('hidden');
+            btnRefund?.classList.remove('hidden');
+            btnEdit?.classList.remove('hidden');
+            btnDelete?.classList.remove('hidden');
+        }
+
+        dom.mngSheet.classList.remove('hidden');
+    }
+
+    // Receipt Logic
+    function showReceipt(order) {
+        dom.modals.receipt.classList.remove('hidden');
+
+        document.getElementById('rcpt-date').innerText = order.order_date;
+        document.getElementById('rcpt-id').innerText = '#' + order.order_id.slice(-5);
+
+        // If order is singular (from list), just one item
+        document.getElementById('rcpt-items').innerHTML = `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>${order.product_name} (${order.option}) x${order.qty}</span>
             <span>$${order.price_hkd}</span>
         </div>
     `;
 
-    document.getElementById('rcpt-total').innerText = 'HKD ' + order.price_hkd;
-}
-
-function saveReceiptImage() {
-    const paper = document.getElementById('receipt-paper');
-    if (typeof html2canvas === 'undefined') {
-        return alert("이미지 저장 라이브러리가 로드되지 않았습니다.");
+        document.getElementById('rcpt-total').innerText = 'HKD ' + order.price_hkd;
     }
 
-    showLoading();
-    html2canvas(paper, { scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `Receipt_${new Date().toISOString().slice(0, 10)}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-        hideLoading();
-        showToast("이미지가 저장되었습니다.");
-    }).catch(err => {
-        console.error(err);
-        hideLoading();
-        alert("이미지 저장 실패");
-    });
-}
+    function saveReceiptImage() {
+        const paper = document.getElementById('receipt-paper');
+        if (typeof html2canvas === 'undefined') {
+            return alert("이미지 저장 라이브러리가 로드되지 않았습니다.");
+        }
+
+        showLoading();
+        html2canvas(paper, { scale: 2 }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `Receipt_${new Date().toISOString().slice(0, 10)}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            hideLoading();
+            showToast("이미지가 저장되었습니다.");
+        }).catch(err => {
+            console.error(err);
+            hideLoading();
+            alert("이미지 저장 실패");
+        });
+    }
