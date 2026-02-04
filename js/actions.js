@@ -137,9 +137,6 @@ function openHkDeliveryModal(mode = 'single') {
     dom.modals.hk.classList.remove('hidden');
 }
 
-dom.modals.hk.classList.remove('hidden');
-}
-
 function saveBulkHongKongDelivery() {
     openHkDeliveryModal('bulk');
 }
