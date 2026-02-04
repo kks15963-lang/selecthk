@@ -34,7 +34,8 @@ function initDom() {
             remarks: document.getElementById('inp-remarks'),
             container: document.getElementById('product-rows-container'),
             btnSave: document.getElementById('btn-save-order'),
-            btnClose: document.getElementById('btn-close-form')
+            btnClose: document.getElementById('btn-close-form'),
+            btnAddRow: document.getElementById('btn-add-row')
         },
 
         // Lists
@@ -57,6 +58,7 @@ function initDom() {
 
         // Modal Inputs
         modalInpKrw: document.getElementById('modal-inp-krw'),
+        purchaseItemList: document.getElementById('purchase-item-list'),
         inpShipTotal: document.getElementById('inp-ship-total'),
         inpSettleTotal: document.getElementById('inp-settle-total'),
 

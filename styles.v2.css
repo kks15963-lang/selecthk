@@ -99,7 +99,7 @@ body {
 
 .stat-card {
     background: white;
-    padding: 20px;
+    padding: 15px;
     border-radius: 16px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
     border: 1px solid var(--border);
@@ -110,7 +110,7 @@ body {
 }
 
 .stat-label {
-    font-size: 14px;
+    font-size: 12px;
     color: var(--text-sub);
     font-weight: 600;
     display: flex;
@@ -446,7 +446,7 @@ body {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px;
-    width: 48%;
+    width: 100%;
     /* Roughly half */
     font-size: 14px;
     font-weight: 600;
@@ -757,7 +757,7 @@ body {
 .loading-spinner {
     width: 60px;
     height: 60px;
-    animation: spin 0.6s linear infinite;
+    animation: spin 0.8s linear infinite;
 }
 
 /* --- AUTOCOMPLETE (Custom Google Style) --- */

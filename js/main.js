@@ -40,6 +40,7 @@ function setupEvents() {
     document.getElementById('fab-add').onclick = () => openForm(null, navigate);
     dom.form.btnSave.onclick = saveOrder;
     dom.form.btnClose.onclick = () => navigate('view-list');
+    dom.form.btnAddRow.onclick = () => addProductRow();
 
     dom.form.btnSave.onclick = saveOrder;
     dom.form.btnClose.onclick = () => navigate('view-list');

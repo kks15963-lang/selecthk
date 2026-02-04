@@ -9,7 +9,17 @@ async function sendData(payload) {
 }
 
 async function sendBatchUpdate(updates) {
-    return await sendData({ action: 'updateOrders', auth: STATE.auth, data: updates });
+    const payload = { action: 'updateOrders', auth: STATE.auth, data: updates };
+    console.log("[DEBUG] Sending Batch Update:", JSON.stringify(payload));
+
+    try {
+        const res = await sendData(payload);
+        console.log("[DEBUG] Batch Update Response:", res);
+        return res;
+    } catch (e) {
+        console.error("[DEBUG] Batch Update Failed:", e);
+        throw e;
+    }
 }
 
 async function fetchExchangeRate() {

@@ -5,13 +5,13 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
     const el = document.createElement('div');
     el.className = `card ${isSelected ? 'selected-glow' : ''}`;
 
-    const isEntered = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5);
+    const isEntered = (o.status === 'Shipped_to_HK' && o.address && o.address.length > 5 && o.tracking_no && o.local_fee_hkd);
     const statusText = isEntered ? t('status_entered') : t(`status_${o.status.toLowerCase()}`);
     const badgeClass = isEntered ? 'completed' : o.status.toLowerCase();
 
     let warning = '';
-    if (o.status === 'Shipped_to_HK' && (!o.address || o.address.length < 5)) {
-        warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">${t('warn_address')}</div>`;
+    if (o.status === 'Shipped_to_HK' && !isEntered) {
+        warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">${t('warn_incomplete_hk')}</div>`;
     }
 
     el.innerHTML = `
