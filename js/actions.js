@@ -174,7 +174,11 @@ async function saveHongKongDelivery() {
 
     showLoading();
     try {
-        await sendBatchUpdate(updates);
+        const res = await sendBatchUpdate(updates);
+
+        if (!res || (!res.success && res.result !== 'success')) {
+            throw new Error(res ? res.message : "서버 응답 없음");
+        }
 
         // Reliable Strategy: Wait for Google Sheets to update, then fetch fresh data
         showToast("서버 동기화 중... (약 3초 소요)");
@@ -191,7 +195,10 @@ async function saveHongKongDelivery() {
         // Fetch absolute fresh data from server
         await loadData();
 
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+        alert("저장 실패: " + e.message);
+    }
     finally { hideLoading(); }
 }
 
