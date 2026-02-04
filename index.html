@@ -330,7 +330,9 @@
     <div id="purchase-modal" class="modal hidden">
         <div class="modal-content-bottom">
             <h3 data-i18n="lbl_krw">매입가 입력</h3>
-            <p id="purchase-item-name" class="modal-desc"></p>
+            <div id="purchase-item-list"
+                style="max-height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:10px;">
+            </div>
             <input type="number" id="modal-inp-krw" class="form-input-large" placeholder="KRW 0" data-i18n="ph_cost">
             <button id="btn-save-cost" class="btn-primary-large" style="margin-top:20px;" data-i18n="btn_save_cost">매입가
                 저장하고 완료하기</button>

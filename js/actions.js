@@ -221,6 +221,19 @@ function toggleHkSelection(o) {
 
 function openBatchModal(type) {
     if (type === 'purchase') {
+        const ids = Array.from(STATE.selectedBatchIds);
+        const selected = STATE.orders.filter(o => ids.includes(o.order_id));
+        const html = selected.map(o => `
+            <div style="border-bottom:1px solid #eee; padding:8px 0;">
+                <div style="font-weight:bold; font-size:13px; color:#1e293b;">${o.product_name} <span style="font-weight:400; color:#64748b;">(${o.option})</span></div>
+                <div style="font-size:12px; color:#475569; display:flex; justify-content:space-between; margin-top:2px;">
+                    <span>${o.customer_name}</span>
+                    <span style="font-weight:600;">x${o.qty}</span>
+                </div>
+            </div>
+        `).join('');
+        dom.purchaseItemList.innerHTML = html || `<div style="text-align:center; padding:10px; color:#94a3b8;">${t('msg_no_selection')}</div>`;
+
         dom.modalInpKrw.value = '';
         dom.modals.purchase.classList.remove('hidden');
     }
@@ -235,10 +248,30 @@ function openBatchModal(type) {
 }
 
 async function savePurchaseCost() {
-    const cost = dom.modalInpKrw.value;
-    if (!cost) return alert(t('msg_enter_cost'));
-    if (STATE.selectedBatchIds.size === 0) return alert(t('msg_no_selection'));
-    const updates = Array.from(STATE.selectedBatchIds).map(id => ({ order_id: id, cost_krw: Number(cost), status: 'Ordered' }));
+    const bulkCost = dom.modalInpKrw.value.trim();
+    let updates = [];
+
+    if (bulkCost) {
+        // Bulk Mode: Split total cost among items
+        const ids = Array.from(STATE.selectedBatchIds);
+        if (ids.length === 0) return alert(t('msg_no_selection'));
+        const perItemCost = Number(bulkCost) / ids.length;
+        updates = ids.map(id => ({ order_id: id, cost_krw: perItemCost, status: 'Ordered' }));
+    } else {
+        // Individual Mode
+        const inputs = Array.from(document.querySelectorAll('.inp-indiv-cost'));
+        if (inputs.length === 0 && STATE.selectedBatchIds.size > 0) return alert(t('msg_enter_cost'));
+
+        const emptyInputs = inputs.filter(inp => inp.value.trim() === '');
+        if (emptyInputs.length > 0) return alert(t('msg_enter_cost'));
+
+        updates = inputs.map(inp => ({
+            order_id: inp.dataset.id,
+            cost_krw: Number(inp.value),
+            status: 'Ordered'
+        }));
+    }
+
     showLoading();
     try {
         await sendBatchUpdate(updates);
@@ -246,7 +279,7 @@ async function savePurchaseCost() {
         STATE.selectedBatchIds.clear();
         dom.modals.purchase.classList.add('hidden');
         loadData();
-    } catch (e) { console.error(e); alert(t('msg_error')); }
+    } catch (e) { console.error(e); alert(t('msg_save_fail')); }
     finally { hideLoading(); }
 }
 
