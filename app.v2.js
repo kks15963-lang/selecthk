@@ -422,14 +422,13 @@ function openHkDeliveryModal() {
     // btn-mng-delivery handler: CLEARS selectedHkIds -> ADDS target customer -> calls openHkDeliveryModal.
     // saveBulkHongKongDelivery: Calls openHkDeliveryModal (selectedHkIds is already set).
     // openHkDeliveryModal: Just opens UI.
-
     dom.modals.hk.classList.remove('hidden');
 }
 
 async function saveHongKongDelivery() {
-    const address = dom.inpHkAddress.value;
-    const tracking = dom.inpTracking.value;
-    const localFee = dom.inpLocalFee.value;
+    const address = dom.inpHkAddress.value.trim();
+    const tracking = dom.inpTracking.value.trim();
+    const localFee = dom.inpLocalFee.value.trim();
 
     const ids = Array.from(STATE.selectedHkIds);
     if (ids.length === 0) return alert("대상 주문이 없습니다.");
@@ -442,12 +441,18 @@ async function saveHongKongDelivery() {
 
     const updates = relevantOrders.map(o => ({
         order_id: o.order_id,
-        address: address,
-        tracking_no: tracking,
-        local_fee_hkd: feePerItem,
-        status: 'Completed',
+        // Only update if input provided, else keep existing (Safe Batch)
+        address: address || o.address,
+        tracking_no: tracking || o.tracking_no,
+        local_fee_hkd: feePerItem || o.local_fee_hkd,
+        status: (address || o.address) ? 'Completed' : 'Shipped_to_HK', // Only complete if address exists
         remarks: o.remarks + (tracking ? ` [Tracking: ${tracking}]` : '')
     }));
+
+    // Check if we are potentially updating status to Completed without address
+    if (updates.some(u => u.status === 'Completed' && !u.address)) {
+        return alert("배송 주소가 없는 주문이 포함되어 있습니다. 주소를 입력해주세요.");
+    }
 
     showLoading();
     try {
@@ -787,12 +792,14 @@ function openForm(data = null) {
 function addProductRow(data = null) {
     const row = document.createElement('div');
     row.className = 'product-card';
-    const uid = `list-opt-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     row.innerHTML = `
         <div style="margin-bottom:12px;">
             <label class="form-label">상품명 <span style="color:var(--danger)">*</span></label>
-            <input class="form-input inp-product" list="list-products" placeholder="상품명 검색" value="${data ? data.product : ''}">
+            <div class="autocomplete-wrapper">
+                <input class="form-input inp-product" placeholder="상품명 검색" value="${data ? data.product : ''}" autocomplete="off">
+                <div class="suggestion-box"></div>
+            </div>
         </div>
         <div class="row">
             <div style="flex:1;">
@@ -806,56 +813,68 @@ function addProductRow(data = null) {
         </div>
         <div style="margin-top:12px;">
              <label class="form-label">옵션/사이즈 <span style="color:var(--danger)">*</span></label>
-             <input class="form-input inp-option" list="${uid}" placeholder="옵션 정보" value="${data ? data.option : ''}">
-             <datalist id="${uid}"></datalist>
+             <div class="autocomplete-wrapper">
+                 <input class="form-input inp-option" placeholder="옵션 정보" value="${data ? data.option : ''}" autocomplete="off">
+                 <div class="suggestion-box"></div>
+             </div>
         </div>
     `;
 
     const inpProd = row.querySelector('.inp-product');
+    const boxProd = row.querySelector('.inp-product + .suggestion-box');
+
     const inpOpt = row.querySelector('.inp-option');
-    const dlOpt = row.querySelector('datalist');
+    const boxOpt = row.querySelector('.inp-option + .suggestion-box');
 
-    ensureProductDatalist();
+    setupAutocomplete(inpProd, boxProd, 'product_name');
+    setupAutocomplete(inpOpt, boxOpt, 'option', () => inpProd.value.trim());
 
-    const handleUpdate = () => {
-        const val = inpProd.value.trim();
-        if (val) updateOptionDatalist(dlOpt, val);
-    };
-
-    inpProd.addEventListener('input', handleUpdate);
-    inpProd.addEventListener('change', handleUpdate);
-    inpProd.addEventListener('focus', ensureProductDatalist);
-
-    inpOpt.addEventListener('focus', handleUpdate);
-    inpOpt.addEventListener('click', handleUpdate);
-
-    if (data && data.product) handleUpdate();
     bindRowActions(row);
     dom.form.container.appendChild(row);
 }
 
-function ensureProductDatalist() {
-    const dl = document.getElementById('list-products');
-    if (!dl) return;
-    const unique = [...new Set(STATE.orders.map(o => o.product_name).filter(Boolean))];
-    dl.innerHTML = '';
-    unique.sort().forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p;
-        dl.appendChild(opt);
+function setupAutocomplete(input, box, key, filterFn = null) {
+    input.addEventListener('input', () => {
+        const val = input.value.trim().toLowerCase();
+        if (!val) { box.classList.remove('active'); return; }
+
+        let source = STATE.orders;
+        if (filterFn) {
+            const filterVal = filterFn();
+            if (filterVal) source = source.filter(o => o.product_name === filterVal);
+        }
+
+        const unique = [...new Set(source.map(o => o[key]).filter(Boolean))];
+        const matches = unique.filter(txt => txt.toLowerCase().includes(val));
+
+        if (matches.length > 0) {
+            box.innerHTML = matches.map(txt => {
+                const idx = txt.toLowerCase().indexOf(val);
+                const pre = txt.substring(0, idx);
+                const match = txt.substring(idx, idx + val.length);
+                const post = txt.substring(idx + val.length);
+                return `<div class="suggestion-item"><span class="icon">🔍</span> ${pre}<span class="match">${match}</span>${post}</div>`;
+            }).join('');
+
+            box.querySelectorAll('.suggestion-item').forEach((item, i) => {
+                item.onclick = () => {
+                    input.value = matches[i];
+                    box.classList.remove('active');
+                };
+            });
+
+            box.classList.add('active');
+        } else {
+            box.classList.remove('active');
+        }
     });
+
+    // Hide on blur (delayed to allow click)
+    input.addEventListener('blur', () => setTimeout(() => box.classList.remove('active'), 200));
+    input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
 }
 
-function updateOptionDatalist(dl, prodName) {
-    if (!dl) return;
-    dl.innerHTML = '';
-    const relevant = STATE.orders.filter(o => o.product_name.toLowerCase() === prodName.toLowerCase()).map(o => o.option).filter(Boolean);
-    [...new Set(relevant)].sort().forEach(o => {
-        const opt = document.createElement('option');
-        opt.value = o;
-        dl.appendChild(opt);
-    });
-}
+// ensureProductDatalist & updateOptionDatalist Removed as they are replaced by custom logic
 
 function bindRowActions(row) {
     let timer;

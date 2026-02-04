@@ -761,3 +761,61 @@ body {
     height: 60px;
     animation: spin 0.6s linear infinite;
 }
+
+/* --- AUTOCOMPLETE (Custom Google Style) --- */
+.autocomplete-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.suggestion-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.suggestion-box.active {
+    display: block;
+}
+
+.suggestion-item {
+    padding: 12px 14px;
+    cursor: pointer;
+    font-size: 15px;
+    color: var(--text-main);
+    border-bottom: 1px solid #f1f5f9;
+    background: white;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.focused {
+    background-color: #f1f5f9;
+}
+
+.suggestion-item .match {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.suggestion-item .icon {
+    font-size: 12px;
+    color: #94a3b8;
+}
