@@ -154,16 +154,22 @@ async function saveHongKongDelivery() {
         const address = dom.inpHkAddress.value.trim();
         const tracking = dom.inpTracking.value.trim();
         const localFee = dom.inpLocalFee.value.trim();
-        const feePerItem = localFee ? (Number(localFee) / relevantOrders.length) : 0;
 
-        updates = relevantOrders.map(o => ({
-            order_id: o.order_id,
-            address: address || o.address,
-            tracking_no: tracking || o.tracking_no,
-            local_fee_hkd: feePerItem || o.local_fee_hkd,
-            status: 'Shipped_to_HK', // Force keep status
-            remarks: o.remarks + (tracking && !o.remarks.includes(tracking) ? ` [TC: ${tracking}]` : '')
-        }));
+        updates = relevantOrders.map(o => {
+            let newFee = o.local_fee_hkd || 0;
+            if (localFee !== '') {
+                newFee = Number(localFee) / relevantOrders.length;
+            }
+
+            return {
+                order_id: o.order_id,
+                address: address || o.address || '',
+                tracking_no: tracking || o.tracking_no || '',
+                local_fee_hkd: newFee,
+                status: 'Shipped_to_HK',
+                remarks: (o.remarks || '') + (tracking && !(o.remarks || '').includes(tracking) ? ` [TC: ${tracking}]` : '')
+            };
+        });
     }
 
     showLoading();
