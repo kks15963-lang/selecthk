@@ -201,7 +201,10 @@ function renderOrderList() {
 function renderPurchaseList() {
     const list = dom.lists.purchase;
     list.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Pending');
+    const rawItems = STATE.orders.filter(o => o.status === 'Pending');
+
+    // Group by Order ID (Unified Card Unit)
+    const items = groupOrders(rawItems, o => o.order_id);
 
     const batchBtn = document.getElementById('action-bar-purchase');
     if (STATE.selectedBatchIds.size > 0) {
@@ -222,7 +225,10 @@ function renderPurchaseList() {
 function renderKoreaList() {
     const list = dom.lists.korea;
     list.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Ordered');
+    const rawItems = STATE.orders.filter(o => o.status === 'Ordered');
+
+    // Group by Order ID (Unified Card Unit)
+    const items = groupOrders(rawItems, o => o.order_id);
 
     const batchBtn = document.getElementById('action-bar-korea');
     if (STATE.selectedKoreaIds.size > 0) {
@@ -282,8 +288,8 @@ function renderFinanceList() {
     list.innerHTML = '';
     const rawItems = STATE.orders.filter(o => o.status === 'Completed');
 
-    // Group by Order ID (like Main List)
-    const items = groupOrders(rawItems, o => o.order_id);
+    // Group by Customer ID (Maintain Combined Shipping)
+    const items = groupOrders(rawItems, o => o.customer_id);
 
     const batchBtn = document.getElementById('action-bar-finance');
     if (STATE.selectedFinanceIds.size > 0) {
@@ -292,10 +298,10 @@ function renderFinanceList() {
     } else batchBtn.classList.add('hidden');
 
     renderPagination(list, items, renderFinanceList, (o) => {
-        const has = STATE.selectedFinanceIds.has(o.order_id);
+        const has = STATE.selectedFinanceIds.has(o.customer_id);
         return createCard(o, () => {
-            if (has) STATE.selectedFinanceIds.delete(o.order_id);
-            else STATE.selectedFinanceIds.add(o.order_id);
+            if (has) STATE.selectedFinanceIds.delete(o.customer_id);
+            else STATE.selectedFinanceIds.add(o.customer_id);
             renderFinanceList();
         }, has, true); // Disable long press
     });

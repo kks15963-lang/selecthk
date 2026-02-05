@@ -328,8 +328,15 @@ async function saveBulkSettlement() {
     if (STATE.selectedFinanceIds.size === 0) return alert(t('msg_select_settle'));
 
     // 1. Calculate Required Cost (Product Cost + ship_fee_krw)
-    const ids = Array.from(STATE.selectedFinanceIds);
-    const selectedOrders = STATE.orders.filter(o => ids.includes(o.order_id));
+    // 1. Calculate Required Cost (Product Cost + ship_fee_krw)
+    const customerIds = Array.from(STATE.selectedFinanceIds); // Now these are CUSTOMER IDs
+    // Find all COMPLETED orders for these customers
+    const selectedOrders = STATE.orders.filter(o => customerIds.includes(o.customer_id) && o.status === 'Completed');
+
+    if (selectedOrders.length === 0) return alert(t('msg_no_selection'));
+
+    // Extract unique Order IDs
+    const orderIds = [...new Set(selectedOrders.map(o => o.order_id))];
 
     let totalCostKrw = 0;
     selectedOrders.forEach(o => {
@@ -341,8 +348,7 @@ async function saveBulkSettlement() {
     // 2. Get User Input (Total Deposit Amount)
     const inputTotal = Number(dom.inpSettleTotal.value) || 0;
 
-    // 3. Calculate Balance (Remaining Profit/Excess)
-    // Balance = Deposit - Cost
+    // 3. Calculate Balance
     const balance = inputTotal - totalCostKrw;
 
     // 4. Create Settlement Record
@@ -356,12 +362,12 @@ async function saveBulkSettlement() {
                 total_input_krw: inputTotal,
                 actual_amount_krw: Math.round(totalCostKrw),
                 balance_krw: Math.round(balance),
-                related_order_ids: ids
+                related_order_ids: orderIds
             }
         });
 
         // B. Update Orders Status
-        const updates = ids.map(id => ({ order_id: id, status: 'Settled' }));
+        const updates = orderIds.map(id => ({ order_id: id, status: 'Settled' }));
         await sendBatchUpdate(updates);
 
         // C. Show Result
