@@ -57,6 +57,12 @@ async function saveOrder() {
 
     showLoading();
     try {
+        const editId = dom.form.id.value;
+        if (editId) {
+            // Delete existing logic first (Full Replacement Strategy)
+            await sendData({ action: 'deleteOrder', order_id: editId, auth: STATE.auth });
+        }
+
         const res = await sendData({ action: 'createOrders', auth: STATE.auth, data: orders });
         if (res && res.success) {
             alert(t('msg_save_done'));

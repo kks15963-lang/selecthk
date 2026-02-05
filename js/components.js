@@ -14,14 +14,26 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
         warning = `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:4px;">${t('warn_incomplete_hk')}</div>`;
     }
 
+    let itemDetails = '';
+    if (o.items && o.items.length > 0) {
+        itemDetails = o.items.map(i => `
+            <div style="font-size:13px; color:#334155; margin-top:4px; padding-top:4px; border-top:1px dashed #eee;">
+                <span>${i.product_name}</span> <span style="color:#64748b;">(${i.option})</span> x${i.qty}
+            </div>
+        `).join('');
+    } else {
+        itemDetails = `<div class="card-subtitle" style="color:#64748b; font-size:13px;">${o.customer_id} | ${o.option} (x${o.qty})</div>`;
+    }
+
     el.innerHTML = `
         <div class="card-header">
-            <span class="card-title">${o.product_name}</span>
+            <span class="card-title">${o.items && o.items.length > 1 ? `${t('lbl_total')} ${o.items.length}${t('lbl_items')}` : o.product_name}</span>
             <span class="badge ${badgeClass}">${statusText}</span>
         </div>
-        <div class="card-subtitle" style="color:#64748b; font-size:13px;">${o.customer_id} | ${o.option} (x${o.qty})</div>
+        ${o.items && o.items.length > 1 ? `<div style="font-size:12px; font-weight:bold; color:#475569; margin-bottom:4px;">${o.customer_id}</div>` : ''}
+        ${itemDetails}
         ${warning}
-        <div class="card-details">
+        <div class="card-details" style="margin-top:8px;">
             <span>HKD ${Number(o.price_hkd).toLocaleString()}</span>
             <span style="color:#94a3b8">${o.order_date}</span>
         </div>
@@ -89,7 +101,18 @@ function openForm(data = null, navigateFn) {
     dom.form.container.innerHTML = '';
 
     if (data) {
-        addProductRow({ product: data.product_name, qty: data.qty, price: data.price_hkd, option: data.option });
+        if (data.items && data.items.length > 0) {
+            data.items.forEach(item => {
+                addProductRow({
+                    product: item.product_name,
+                    qty: item.qty,
+                    price: item.price_hkd,
+                    option: item.option
+                });
+            });
+        } else {
+            addProductRow({ product: data.product_name, qty: data.qty, price: data.price_hkd, option: data.option });
+        }
     } else {
         addProductRow();
     }

@@ -134,8 +134,13 @@ function setupEvents() {
 
     // Management Sheet actions
     document.getElementById('btn-mng-edit').onclick = () => {
-        const o = STATE.orders.find(x => x.order_id === STATE.managementTargetId);
-        if (o) openForm(o, navigate);
+        const id = STATE.managementTargetId;
+        const allItems = STATE.orders.filter(x => x.order_id === id);
+        if (allItems.length > 0) {
+            const main = { ...allItems[0] };
+            main.items = allItems; // Pass all items for population
+            openForm(main, navigate);
+        }
         dom.mngSheet.classList.add('hidden');
     };
     document.getElementById('btn-mng-refund').onclick = async () => {
