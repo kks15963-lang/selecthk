@@ -280,7 +280,10 @@ function renderHongKongList() {
 function renderFinanceList() {
     const list = dom.lists.finance;
     list.innerHTML = '';
-    const items = STATE.orders.filter(o => o.status === 'Completed');
+    const rawItems = STATE.orders.filter(o => o.status === 'Completed');
+
+    // Group by Order ID (like Main List)
+    const items = groupOrders(rawItems, o => o.order_id);
 
     const batchBtn = document.getElementById('action-bar-finance');
     if (STATE.selectedFinanceIds.size > 0) {
