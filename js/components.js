@@ -16,13 +16,15 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
 
     let itemDetails = '';
     if (o.items && o.items.length > 0) {
+        // Multi-item display
         itemDetails = o.items.map(i => `
             <div style="font-size:13px; color:#334155; margin-top:4px; padding-top:4px; border-top:1px dashed #eee;">
                 <span>${i.product_name}</span> <span style="color:#64748b;">(${i.option})</span> x${i.qty}
             </div>
         `).join('');
     } else {
-        itemDetails = `<div class="card-subtitle" style="color:#64748b; font-size:13px;">${o.customer_id} | ${o.option} (x${o.qty})</div>`;
+        // Single-item display
+        itemDetails = `<div style="font-size:13px; color:#334155; margin-top:4px;">${o.option} (x${o.qty})</div>`;
     }
 
     el.innerHTML = `
@@ -30,7 +32,7 @@ function createCard(o, onClick, isSelected, disableLongPress = false, onLongPres
             <span class="card-title">${o.items && o.items.length > 1 ? `${t('lbl_total')} ${o.items.length}${t('lbl_items')}` : o.product_name}</span>
             <span class="badge ${badgeClass}">${statusText}</span>
         </div>
-        ${o.items && o.items.length > 1 ? `<div style="font-size:12px; font-weight:bold; color:#475569; margin-bottom:4px;">${o.customer_id}</div>` : ''}
+        <div style="font-size:12px; font-weight:bold; color:#475569; margin-bottom:4px;">${o.customer_id}</div>
         ${itemDetails}
         ${warning}
         <div class="card-details" style="margin-top:8px;">
