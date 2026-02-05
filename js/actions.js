@@ -381,13 +381,34 @@ function showReceipt(order) {
     dom.modals.receipt.classList.remove('hidden');
     document.getElementById('rcpt-date').innerText = order.order_date;
     document.getElementById('rcpt-id').innerText = '#' + order.order_id.slice(-5);
-    document.getElementById('rcpt-items').innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <span>${order.product_name} (${order.option}) x${order.qty}</span>
-            <span>$${order.price_hkd}</span>
-        </div>
-    `;
-    document.getElementById('rcpt-total').innerText = 'HKD ' + order.price_hkd;
+
+    let html = '';
+    let total = 0;
+
+    if (order.items && order.items.length > 0) {
+        order.items.forEach(i => {
+            const p = Number(i.price_hkd) || 0;
+            total += p;
+            html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span>${i.product_name} (${i.option}) x${i.qty}</span>
+                    <span>$${p.toLocaleString()}</span>
+                </div>
+            `;
+        });
+    } else {
+        const p = Number(order.price_hkd) || 0;
+        total = p;
+        html = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span>${order.product_name} (${order.option}) x${order.qty}</span>
+                <span>$${p}</span>
+            </div>
+        `;
+    }
+
+    document.getElementById('rcpt-items').innerHTML = html;
+    document.getElementById('rcpt-total').innerText = 'HKD ' + total.toLocaleString();
 }
 
 function saveReceiptImage() {
